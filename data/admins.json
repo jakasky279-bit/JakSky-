@@ -1,0 +1,27 @@
+[
+  {
+    "name": "Owner",
+    "key1": "xyron",
+    "key2": "store123",
+    "role": "owner",
+    "avatar": "/uploads/admin.png",
+    "verified": true
+  },
+  {
+    "name": "JakSky",
+    "key1": "JakSky",
+    "key2": "JakSky",
+    "role": "admin",
+    "avatar": "/uploads/admin.png",
+    "verified": true,
+    "status": "kicked"
+  },
+  {
+    "name": "ImSky2",
+    "key1": "ImSky2",
+    "key2": "ImSky2",
+    "role": "moderator",
+    "status": "active",
+    "verified": true
+  }
+]

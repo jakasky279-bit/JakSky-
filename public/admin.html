@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Admin Login</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Arial;
+  background:linear-gradient(135deg,#ff9bdc,#ffc2e2,#ffe1ef);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+}
+.card{
+  width:92%;
+  max-width:380px;
+  background:white;
+  padding:28px;
+  border-radius:26px;
+  box-shadow:0 15px 40px #ff3f9d40;
+  text-align:center;
+}
+h2{
+  margin:0 0 16px;
+  background:linear-gradient(90deg,#ff3f9d,#ff7ac3);
+  -webkit-background-clip:text;
+  color:transparent;
+  font-size:26px;
+}
+input{
+  width:100%;
+  padding:13px;
+  margin:8px 0;
+  border-radius:14px;
+  border:1px solid #ffc2dc;
+  outline:none;
+}
+button{
+  width:100%;
+  padding:13px;
+  border-radius:999px;
+  border:0;
+  background:linear-gradient(90deg,#ff3f9d,#ff7ac3);
+  color:white;
+  font-weight:900;
+  margin-top:10px;
+  box-shadow:0 8px 20px #ff3f9d55;
+}
+button:active{transform:scale(0.96)}
+.toast{
+  position:fixed;
+  bottom:24px;
+  left:50%;
+  transform:translateX(-50%);
+  background:white;
+  color:#ff3f9d;
+  padding:12px 18px;
+  border-radius:999px;
+  box-shadow:0 10px 25px #0003;
+  display:none;
+  font-weight:900;
+  z-index:99;
+}
+.small{
+  font-size:12px;
+  opacity:.65;
+  margin-top:12px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+  <h2>Login Admin 🔐</h2>
+
+  <input id="name" placeholder="Nama akun">
+  <input id="key" placeholder="Key 1 / Key 2">
+
+  <button onclick="login()">Masuk</button>
+  <div class="small">Gunakan akun role admin / owner yang statusnya active</div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+function show(msg){
+  const t=document.getElementById("toast");
+  t.innerText=msg;
+  t.style.display="block";
+  setTimeout(()=>t.style.display="none",2000);
+}
+
+async function login(){
+  const name=document.getElementById("name").value.trim();
+  const key=document.getElementById("key").value.trim();
+
+  if(!name||!key) return show("Isi nama dan key");
+
+  const r=await fetch("/api/admin-login-real",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({name,key})
+  });
+
+  const d=await r.json().catch(()=>({}));
+
+  if(!r.ok) return show(d.message||"Login gagal");
+
+  if(d.role!=="admin" && d.role!=="owner"){
+    return show("Bukan akun admin");
+  }
+
+  localStorage.setItem("admin_login",d.name);
+  localStorage.setItem("adminName",d.name);
+  sessionStorage.setItem("admin_login",d.name);
+  sessionStorage.setItem("adminName",d.name);
+  localStorage.setItem("role", d.role);
+  sessionStorage.setItem("role", d.role);
+
+  show("Login berhasil");
+
+  setTimeout(()=>{
+    location.href="/admin-panel.html?v="+Date.now();
+  },700);
+}
+</script>
+
+</body>
+</html>

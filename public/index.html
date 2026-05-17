@@ -1,0 +1,1260 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta name="google-site-verification" content="TmyszzU8dcpW9mYdNjVjlH_xjKE8VUtC737UlIgMuVA" />
+<meta charset="UTF-8">
+<title>JakSky Video</title>
+<link rel="stylesheet" href="style.css?v=3">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script>
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    await OneSignal.init({
+      appId: "4931b76f-3760-4dde-aa49-801f0f9c2689",
+    });
+  });
+</script>
+<style>
+*{box-sizing:border-box}
+
+html,body{
+  margin:0;
+  min-height:100%;
+  font-family:Arial,sans-serif;
+  background:linear-gradient(135deg,#ffe0ef,#ffc9df);
+  color:#222;
+  overflow-x:hidden;
+}
+
+.hidden{
+  display:none!important;
+}
+
+/* ===== BRAND ===== */
+.brandHero{
+  width:94%;
+  max-width:1100px;
+  margin:14px auto 12px;
+  padding:18px 14px;
+  border-radius:24px;
+  background:linear-gradient(135deg,#ffffffee,#ffe1efee);
+  box-shadow:0 16px 38px rgba(255,63,157,.25);
+  border:1px solid #ffc2dc;
+  text-align:center;
+  position:relative;
+  overflow:hidden;
+}
+
+.brandHero:before{
+  content:"";
+  position:absolute;
+  inset:-80px;
+  background:linear-gradient(120deg,transparent,#ffffff99,transparent);
+  transform:rotate(18deg);
+  animation:shine 4s infinite linear;
+}
+
+@keyframes shine{
+  0%{transform:translateX(-75%) rotate(18deg)}
+  100%{transform:translateX(75%) rotate(18deg)}
+}
+
+.brandLogo{
+  position:relative;
+  z-index:1;
+  font-size:34px;
+  font-weight:1000;
+  background:linear-gradient(90deg,#ff2f92,#7c3aed,#1d9bf0);
+  -webkit-background-clip:text;
+  color:transparent;
+}
+
+.brandSub{
+  position:relative;
+  z-index:1;
+  margin-top:6px;
+  font-size:13px;
+  font-weight:800;
+  color:#7a2b57;
+}
+
+.brandMini{
+  position:relative;
+  z-index:1;
+  margin-top:10px;
+  display:inline-block;
+  padding:7px 13px;
+  border-radius:999px;
+  background:#fff0f6;
+  color:#ff3f9d;
+  font-size:11px;
+  font-weight:900;
+}
+
+/* ===== TOP ===== */
+.userTop{
+  position:sticky;
+  top:0;
+  z-index:10;
+  background:linear-gradient(135deg,#ffe0ef,#ffc9df);
+  padding:10px 12px;
+}
+
+#search{
+  width:100%;
+  padding:13px;
+  border-radius:18px;
+  border:2px solid #ff4fa3;
+  outline:none;
+  font-weight:800;
+}
+
+#filterTabs{
+  display:flex;
+  gap:8px;
+  overflow-x:auto;
+  padding:10px 0 2px;
+}
+
+#filterTabs::-webkit-scrollbar{
+  display:none;
+}
+
+#filterTabs button{
+  flex:0 0 auto;
+  border:0;
+  border-radius:999px;
+  padding:10px 14px;
+  background:#ff86c0;
+  color:white;
+  font-weight:900;
+  box-shadow:0 8px 18px rgba(255,63,157,.22);
+}
+
+#filterTabs button.active{
+  background:#1d9bf0;
+}
+
+/* ===== LIST ===== */
+#list{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:12px;
+  padding:12px;
+}
+
+.card{
+  background:white;
+  border-radius:18px;
+  overflow:hidden;
+  box-shadow:0 10px 26px rgba(255,63,157,.18);
+  height:295px;
+  display:flex;
+  flex-direction:column;
+}
+
+.card:active{
+  transform:scale(.98);
+}
+
+.thumb{
+  position:relative;
+  height:210px;
+  min-height:210px;
+  background:#ffe1ef;
+  overflow:hidden;
+}
+
+.thumb img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+
+.body{
+  height:85px;
+  padding:10px;
+  overflow:hidden;
+  background:white;
+}
+
+.body b{
+  display:block;
+  font-size:14px;
+  line-height:1.2;
+  max-height:34px;
+  overflow:hidden;
+}
+
+.meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:5px;
+  margin-top:7px;
+}
+
+.meta span{
+  background:white;
+  border-radius:999px;
+  padding:4px 6px;
+  font-size:10px;
+  font-weight:800;
+  box-shadow:0 4px 10px rgba(255,63,157,.15);
+}
+
+.badge{
+  position:absolute;
+  top:12px;
+  right:12px;
+  padding:6px 9px;
+  border-radius:999px;
+  color:white;
+  font-size:11px;
+  font-weight:900;
+  background:#ff3f9d;
+  z-index:4;
+}
+
+.expiredBadge{
+  position:absolute;
+  inset:0;
+  background:rgba(0,0,0,.50);
+  color:white;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:1000;
+  letter-spacing:1px;
+  z-index:3;
+}
+
+/* ===== LOVE FAVORIT PREMIUM ===== */
+.btnFav{
+  position:absolute;
+  top:12px;
+  left:12px;
+  width:44px;
+  height:44px;
+  border:0;
+  border-radius:50%;
+  background:rgba(255,255,255,.82);
+  color:#777;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:23px;
+  font-weight:900;
+  z-index:20;
+  cursor:pointer;
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  box-shadow:
+    0 10px 25px rgba(0,0,0,.18),
+    inset 0 0 0 1px rgba(255,255,255,.85);
+  transition:.18s ease;
+}
+
+.btnFav:active{
+  transform:scale(.88);
+}
+
+.btnFav.active{
+  background:linear-gradient(135deg,#ff2f92,#ff6bbd);
+  color:white;
+  box-shadow:
+    0 12px 28px rgba(255,47,146,.45),
+    0 0 0 5px rgba(255,47,146,.14);
+}
+
+.btnFav.lovePop{
+  animation:lovePop .35s ease;
+}
+
+.btnFav.active::after{
+  content:"";
+  position:absolute;
+  inset:-6px;
+  border-radius:50%;
+  border:2px solid rgba(255,47,146,.35);
+  animation:loveRing .55s ease forwards;
+  pointer-events:none;
+}
+
+.loveBurst{
+  position:absolute;
+  font-size:18px;
+  pointer-events:none;
+  animation:loveBurstUp .7s ease forwards;
+}
+
+@keyframes lovePop{
+  0%{transform:scale(.75)}
+  55%{transform:scale(1.25)}
+  100%{transform:scale(1)}
+}
+
+@keyframes loveRing{
+  0%{opacity:1;transform:scale(.75)}
+  100%{opacity:0;transform:scale(1.35)}
+}
+
+@keyframes loveBurstUp{
+  0%{opacity:1;transform:translateY(0) scale(.8)}
+  100%{opacity:0;transform:translateY(-38px) scale(1.6)}
+}
+
+.emptyBox{
+  grid-column:1/-1;
+  min-height:200px;
+  background:white;
+  border-radius:20px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#ff3f9d;
+  font-weight:900;
+}
+
+/* ===== MODAL ===== */
+#modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.65);
+  z-index:9999;
+  overflow:auto;
+  padding:16px;
+}
+
+.modalBox{
+  background:white;
+  max-width:640px;
+  margin:18px auto;
+  border-radius:24px;
+  padding:18px;
+  box-shadow:0 20px 50px rgba(0,0,0,.35);
+}
+
+.closeBtn{
+  width:40px;
+  height:40px;
+  border:0;
+  border-radius:14px;
+  background:#ff3f9d;
+  color:white;
+  font-size:20px;
+  font-weight:900;
+}
+
+video{
+  width:100%;
+  margin-top:10px;
+  border-radius:18px;
+  background:#000;
+}
+
+.lockBox{
+  background:#fff0f7;
+  padding:14px;
+  border-radius:18px;
+  margin:10px 0;
+}
+
+.lockBox input,
+.commentInput{
+  width:100%;
+  padding:13px;
+  margin:8px 0;
+  border:1px solid #ffc3dc;
+  border-radius:14px;
+  outline:none;
+}
+
+#tabs,.btns,.rate{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin:12px 0;
+}
+
+button{
+  border:0;
+  border-radius:999px;
+  padding:10px 14px;
+  font-weight:900;
+}
+
+#tabs button,
+.btns button,
+.rate button,
+.sendBtn{
+  background:#ff3f9d;
+  color:white;
+}
+
+/* ===== LIKE / UNLIKE FINAL ===== */
+.likeActive{
+  background:#ef4444!important;
+  color:white!important;
+  box-shadow:0 10px 24px rgba(239,68,68,.35)!important;
+}
+
+.unlikeActive{
+  background:#6b7280!important;
+  color:white!important;
+  box-shadow:0 10px 24px rgba(107,114,128,.35)!important;
+}
+
+.likeNormal,
+.unlikeNormal{
+  background:#e5e7eb!important;
+  color:#333!important;
+}
+
+#downloadBtn{
+  background:#38bdf8!important;
+  color:white!important;
+}
+
+/* ===== COMMENT CLEAN FINAL ===== */
+.comment{
+  background:#fff7fc;
+  padding:14px;
+  border-radius:18px;
+  margin:12px 0;
+  box-shadow:none;
+}
+
+.comment .comment{
+  margin-left:0!important;
+}
+
+.adminReplyShow{
+  background:#ffe2f1;
+  padding:12px;
+  border-radius:14px;
+  margin-top:10px;
+  margin-left:0!important;  ✔
+  border-left:none!important;
+  box-shadow:none;
+}
+
+.adminReplyShow .adminReplyShow{
+  margin-left:0!important;
+}
+
+.comment p,
+.adminReplyShow p{
+  margin:6px 0;
+}
+
+.comment button{
+  margin-top:8px;
+}
+
+.verifyBadge{
+  background:#2ea8ff;
+  color:white;
+  font-size:10px;
+  padding:3px 6px;
+  border-radius:999px;
+  margin-left:5px;
+  font-weight:900;
+}
+
+/* ===== WA BUTTON ===== */
+.waJoin{
+  position:fixed;
+  bottom:22px;
+  right:20px;
+  width:58px;
+  height:58px;
+  background:#25d366;
+  border-radius:50%;
+  box-shadow:0 12px 30px #0004;
+  z-index:999;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-decoration:none;
+  animation:goyang 2s infinite;
+}
+
+.waJoin:before{
+  content:"";
+  width:28px;
+  height:28px;
+  background:url("https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg") no-repeat center;
+  background-size:contain;
+  filter:brightness(0) invert(1);
+}
+
+@keyframes goyang{
+  0%{transform:translateY(0)}
+  50%{transform:translateY(-6px)}
+  100%{transform:translateY(0)}
+}
+
+/* ===== TOAST ===== */
+.toast{
+  position:fixed;
+  bottom:25px;
+  left:50%;
+  transform:translateX(-50%) translateY(20px);
+  background:white;
+  color:#333;
+  padding:12px 18px;
+  border-radius:999px;
+  font-size:13px;
+  box-shadow:0 10px 25px rgba(0,0,0,.25);
+  opacity:0;
+  pointer-events:none;
+  transition:.25s;
+  z-index:99999;
+  font-weight:900;
+}
+
+.toast.show{
+  opacity:1;
+  transform:translateX(-50%) translateY(0);
+}
+
+@media(max-width:420px){
+  .brandLogo{font-size:28px}
+  .brandSub{font-size:12px}
+
+  #list{
+    gap:10px;
+    padding:10px;
+  }
+
+  .card{
+    height:275px;
+  }
+
+  .thumb{
+    height:195px;
+    min-height:195px;
+  }
+
+  .btnFav{
+    width:40px;
+    height:40px;
+    font-size:21px;
+    top:10px;
+    left:10px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header class="brandHero">
+  <div class="brandLogo">⚡ JakSky</div>
+  <div class="brandSub">Premium Video Gate • VIP Access • Fast Update</div>
+  <div class="brandMini">Update video terbaru setiap hari</div>
+</header>
+
+<div class="userTop">
+  <input id="search" placeholder="🔍 Cari video...">
+
+  <div id="filterTabs">
+    <button class="active" onclick="setMode('semua',this)">Semua</button>
+    <button onclick="setMode('terbaru',this)">Terbaru</button>
+    <button onclick="setMode('favorit',this)">Favorit</button>
+    <button onclick="setMode('trending',this)">Trending</button>
+    <button onclick="setMode('vip',this)">VIP</button>
+    <button onclick="setMode('expired',this)">Expired</button>
+  </div>
+</div>
+
+<div id="list">
+  <div class="emptyBox">Memuat video...</div>
+</div>
+
+<div id="modal" class="hidden">
+  <div class="modalBox">
+    <button class="closeBtn" onclick="closeModal()">×</button>
+
+    <div id="lockArea"></div>
+
+    <video id="player" controls class="hidden"></video>
+    <div id="tabs"></div>
+
+    <h3 id="mtitle"></h3>
+    <p id="mdesc"></p>
+
+    <div class="btns">
+      <button id="likeBtn" onclick="doLike()">❤️ Like</button>
+      <button id="unlikeBtn" onclick="doUnlike()">👎 Unlike</button>
+      <button id="downloadBtn" onclick="doDownload()">⬇️ Download</button>
+    </div>
+
+    <div class="rate">
+      <b>Rating:</b>
+      <button onclick="doRate(1)">1</button>
+      <button onclick="doRate(2)">2</button>
+      <button onclick="doRate(3)">3</button>
+      <button onclick="doRate(4)">4</button>
+      <button onclick="doRate(5)">5</button>
+    </div>
+
+    <h3>Komentar</h3>
+    <div id="comments"></div>
+
+    <input id="cname" class="commentInput" placeholder="Nama">
+    <input id="ctext" class="commentInput" placeholder="Komentar">
+    <button class="sendBtn" onclick="sendComment()">Kirim Komentar</button>
+  </div>
+</div>
+
+<a class="waJoin" href="https://whatsapp.com/channel/0029VbCY6hW1XquepwA9xR2n" target="_blank"></a>
+
+<div id="toast" class="toast"></div>
+
+<script>
+var posts = [];
+var active = null;
+var videos = [];
+var mode = "semua";
+
+var uid = localStorage.getItem("deviceId");
+if(!uid){
+  uid = "u_" + Date.now() + "_" + Math.random().toString(36).slice(2);
+  localStorage.setItem("deviceId", uid);
+}
+
+function showToast(msg){
+  var t = document.getElementById("toast");
+  t.innerText = msg;
+  t.classList.add("show");
+  setTimeout(function(){
+    t.classList.remove("show");
+  }, 2000);
+}
+
+function apiPost(url, body){
+  if(!body) body = {};
+
+  return fetch(url,{
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      "x-user-id":uid
+    },
+    body:JSON.stringify(body)
+  }).then(function(r){
+    return r.json().catch(function(){return {};}).then(function(data){
+      return {ok:r.ok,data:data};
+    });
+  });
+}
+
+function favs(){
+  try{
+    return JSON.parse(localStorage.getItem("fav") || "[]");
+  }catch(e){
+    return [];
+  }
+}
+
+function isLocked(p){
+  if(!p) return false;
+  return !!String(p.key || p.vipKey || p.password || "").trim() || p.type === "vip";
+}
+
+function isExpired(p){
+  if(!p || !p.expiredAt) return false;
+  var t = new Date(p.expiredAt).getTime();
+  return !isNaN(t) && t < Date.now();
+}
+
+function expiredText(expiredAt){
+  if(!expiredAt) return "";
+  var diff = new Date(expiredAt).getTime() - Date.now();
+  if(isNaN(diff)) return "";
+  if(diff <= 0) return "Expired";
+
+  var m = Math.floor(diff / 60000);
+  var h = Math.floor(m / 60);
+  var d = Math.floor(h / 24);
+
+  if(d > 0) return d + " hari lagi";
+  if(h > 0) return h + " jam lagi";
+  return Math.max(m,1) + " menit lagi";
+}
+
+function setMode(m,btn){
+  mode = m;
+
+  var buttons = document.querySelectorAll("#filterTabs button");
+  for(var i=0;i<buttons.length;i++) buttons[i].classList.remove("active");
+
+  if(btn) btn.classList.add("active");
+  render();
+}
+
+function load(){
+  return fetch("/api/posts?t=" + Date.now())
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if(!Array.isArray(data)) data = [];
+      posts = data;
+      render();
+    })
+    .catch(function(){
+      document.getElementById("list").innerHTML = '<div class="emptyBox">Gagal memuat video</div>';
+    });
+}
+
+function render(){
+  var q = (document.getElementById("search").value || "").toLowerCase();
+  var fav = favs();
+  var data = posts.slice();
+
+  if(mode === "favorit"){
+    data = data.filter(function(p){ return fav.indexOf(String(p.id)) !== -1; });
+  }
+
+  if(mode === "expired"){
+    data = data.filter(function(p){ return isExpired(p); });
+  }
+
+  if(mode === "vip"){
+    data = data.filter(function(p){ return isLocked(p); });
+  }
+
+  if(mode === "trending"){
+    data = data.filter(function(p){
+      return Number(p.views || 0) > 0 || Number(p.likes || 0) > 0;
+    });
+  }
+
+  if(mode === "terbaru"){
+    data.sort(function(a,b){ return Number(b.id || 0) - Number(a.id || 0); });
+  }
+
+  data = data.filter(function(p){
+    return String(p.title || "").toLowerCase().indexOf(q) !== -1;
+  });
+
+  var list = document.getElementById("list");
+
+  if(!data.length){
+    list.innerHTML = '<div class="emptyBox">Belum ada video</div>';
+    return;
+  }
+
+  var html = "";
+
+  data.forEach(function(p){
+    var favOn = fav.indexOf(String(p.id)) !== -1;
+    var exp = expiredText(p.expiredAt);
+    var img = p.thumb || p.thumbnail || "";
+    var title = p.title || "Tanpa judul";
+
+    html += ''
+    + '<div class="card" data-id="'+p.id+'">'
+    + '  <div class="thumb" onclick="openPost(\''+p.id+'\')">'
+    + '    <img src="'+img+'" alt="'+title+'" onerror="this.style.display=\'none\'">'
+    +      (isLocked(p) ? '<span class="badge">VIP 🔒</span>' : '')
+    +      (isExpired(p) ? '<div class="expiredBadge">EXPIRED</div>' : '')
+    + '    <button class="btnFav '+(favOn?'active':'')+'" onclick="toggleFav(\''+p.id+'\',event)">'+(favOn?'❤️':'♡')+'</button>'
+    + '  </div>'
+    + '  <div class="body" onclick="openPost(\''+p.id+'\')">'
+    + '    <b>'+title+'</b>'
+    +      (exp ? '<div class="expText">'+exp+'</div>' : '')
+    + '    <div class="meta">'
+    + '      <span>⭐ '+(p.ratingAvg || p.rating || "0.0")+'</span>'
+    + '      <span>👁 '+(p.views || 0)+'</span>'
+    + '      <span>👍 '+(p.likes || 0)+'</span>'
+    + '      <span>👎 '+(p.unlikes || p.dislikes || 0)+'</span>'
+    + '      <span>💬 '+((p.comments || []).length)+'</span>'
+    + '      <span>⬇️ '+(p.downloads || 0)+'</span>'
+    + '    </div>'
+    + '  </div>'
+    + '</div>';
+  });
+
+  list.innerHTML = html;
+}
+
+function toggleFav(id,e){
+  if(e) e.stopPropagation();
+
+  id = String(id);
+  var f = favs();
+  var idx = f.indexOf(id);
+  var activeNow = false;
+
+  if(idx !== -1){
+    f.splice(idx,1);
+    activeNow = false;
+  }else{
+    f.push(id);
+    activeNow = true;
+  }
+
+  localStorage.setItem("fav",JSON.stringify(f));
+
+  var btn = e ? e.target.closest(".btnFav") : null;
+
+  if(btn){
+    btn.classList.toggle("active",activeNow);
+    btn.innerHTML = activeNow ? "❤️" : "♡";
+
+    btn.classList.remove("lovePop");
+    void btn.offsetWidth;
+    btn.classList.add("lovePop");
+
+    if(activeNow){
+      var burst = document.createElement("span");
+      burst.className = "loveBurst";
+      burst.innerHTML = "❤️";
+      btn.appendChild(burst);
+      setTimeout(function(){
+        if(burst) burst.remove();
+      },700);
+    }
+  }
+
+  render();
+}
+
+function openPost(id){
+  var p = null;
+
+  for(var i=0;i<posts.length;i++){
+    if(String(posts[i].id) === String(id)){
+      p = posts[i];
+      break;
+    }
+  }
+
+  if(!p) return;
+
+  if(isExpired(p)){
+    showToast("Video sudah expired");
+    return;
+  }
+
+  active = p;
+  videos = [];
+
+  document.getElementById("modal").classList.remove("hidden");
+  document.getElementById("mtitle").innerText = active.title || "";
+  document.getElementById("mdesc").innerText = active.desc || "";
+
+  document.getElementById("player").classList.add("hidden");
+  document.getElementById("player").src = "";
+  document.getElementById("tabs").innerHTML = "";
+  document.getElementById("lockArea").innerHTML = "";
+
+  apiPost("/api/posts/" + id + "/view",{}).then(function(){
+    return load();
+  });
+
+  if(isLocked(active)){
+    document.getElementById("lockArea").innerHTML =
+      '<div class="lockBox">'
+      + '<b>🔒 Masukkan kunci VIP</b>'
+      + '<input id="vipInput" placeholder="Kunci VIP">'
+      + '<button onclick="unlockNow()">Buka</button>'
+      + '</div>';
+  }else{
+    setVideos(active.videos || (active.video ? [active.video] : []));
+  }
+
+  renderComments();
+  paintButtons();
+}
+
+function unlockNow(){
+  var input = document.getElementById("vipInput");
+  var key = input ? input.value.trim() : "";
+
+  apiPost("/api/unlock/" + active.id,{key:key}).then(function(r){
+    if(!r.ok){
+      showToast(r.data.message || "Kunci salah");
+      return;
+    }
+
+    active = r.data.post || active;
+    document.getElementById("lockArea").innerHTML = "";
+    setVideos(r.data.videos || []);
+  });
+}
+
+localStorage.setItem("role","owner"); // ⬅️ TAMBAH DI SINI
+
+function setVideos(v){
+  videos = v || [];
+
+  if(!videos.length){
+    showToast("Video belum tersedia");
+    return;
+  }
+
+  var player = document.getElementById("player");
+  player.classList.remove("hidden");
+
+  play(0);
+
+  var html = "";
+  for(var i=0;i<videos.length;i++){
+    html += '<button onclick="play('+i+')">Video '+(i+1)+'</button>';
+  }
+
+  document.getElementById("tabs").innerHTML = html;
+}
+
+function play(i){
+  var player = document.getElementById("player");
+  player.src = videos[i];
+  player.play().catch(function(){});
+}
+
+function paintButtons(){
+  if(!active) return;
+
+  var liked = active.likedBy && active.likedBy[uid];
+  var unliked = active.unlikedBy && active.unlikedBy[uid];
+
+  var likeBtn = document.getElementById("likeBtn");
+  var unlikeBtn = document.getElementById("unlikeBtn");
+
+  if(likeBtn){
+    likeBtn.className = liked ? "likeActive" : "likeNormal";
+    likeBtn.innerHTML = liked ? "❤️ Liked" : "❤️ Like";
+  }
+
+  if(unlikeBtn){
+    unlikeBtn.className = unliked ? "unlikeActive" : "unlikeNormal";
+    unlikeBtn.innerHTML = unliked ? "👎 Unliked" : "👎 Unlike";
+  }
+}
+
+function refreshActiveFromData(){
+  if(!active) return;
+
+  for(var i=0;i<posts.length;i++){
+    if(String(posts[i].id) === String(active.id)){
+      active = posts[i];
+      break;
+    }
+  }
+}
+
+function doLike(){
+  if(!active) return;
+
+  apiPost("/api/react-like/" + active.id,{}).then(function(r){
+    if(!r.ok) return showToast(r.data.message || "Gagal like");
+
+    active = r.data;
+    paintButtons();
+    load();
+  });
+}
+
+function doUnlike(){
+  if(!active) return;
+
+  apiPost("/api/react-unlike/" + active.id,{}).then(function(r){
+    if(!r.ok) return showToast(r.data.message || "Gagal unlike");
+
+    active = r.data;
+    paintButtons();
+    load();
+  });
+}
+
+function doRate(n){
+  if(!active) return;
+
+  apiPost("/api/posts/" + active.id + "/rating",{rating:n}).then(function(r){
+    if(!r.ok) return showToast(r.data.message || "Gagal rating");
+
+    active = r.data;
+    showToast("Rating tersimpan: " + n);
+    load();
+  });
+}
+
+function doDownload(){
+  if(!active) return;
+
+  if(isLocked(active) && (!videos || !videos.length)){
+    showToast("Masukkan kunci VIP dulu");
+    return;
+  }
+
+  var file = "";
+
+  if(videos && videos.length) file = videos[0];
+  else if(active.videos && active.videos.length) file = active.videos[0];
+  else file = active.video || "";
+
+  if(!file){
+    showToast("Video tidak ditemukan");
+    return;
+  }
+
+  apiPost("/api/posts/" + active.id + "/download",{}).then(function(){
+  var a = document.createElement("a");
+  a.href = file;
+  a.download = "";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  load();
+});
+}
+
+function sendComment(){
+  if(!active) return;
+
+  var name = document.getElementById("cname").value.trim() || "User";
+  var text = document.getElementById("ctext").value.trim();
+
+  if(!text){
+    showToast("Komentar masih kosong");
+    return;
+  }
+
+  var btn = document.querySelector(".sendBtn");
+  if(btn){
+    btn.disabled = true;
+    btn.innerText = "Mengirim...";
+  }
+
+  apiPost("/api/posts/" + active.id + "/comment",{
+  name:name,
+  text:text,
+  userId:uid,
+  role: localStorage.getItem("role") || "user"
+}).then(function(r){
+    if(!r.ok){
+      showToast(r.data.message || "Gagal komentar");
+      return;
+    }
+
+    active = r.data;
+    document.getElementById("ctext").value = "";
+
+    renderComments();
+    load();
+
+    showToast("Komentar terkirim");
+  }).finally(function(){
+    if(btn){
+      btn.disabled = false;
+      btn.innerText = "Kirim Komentar";
+    }
+  });
+}
+
+function renderComments(){
+  if(!active) return;
+
+  var arr = active.comments || [];
+  var html = "";
+
+  if(!arr.length){
+    document.getElementById("comments").innerHTML = "<p>Belum ada komentar</p>";
+    return;
+  }
+
+  arr.forEach(function(c, i){
+  html += '<div class="comment">'
+   + '<b>'+ (c.name || "User") +'</b>'
++ (c.role === "owner"
+  ? ' <span style="color:gold;font-weight:bold;">👑 OWNER</span>'
+  : c.role === "moderator"
+  ? ' <span style="color:#00bfff;font-weight:bold;">🛡️ MOD</span>'
+  : '')
++ ' <small style="color:#888;">• '+ (active.title || "Video") +'</small>'
+    + '<p>'+ (c.text || c.comment || "") +'</p>'
+    var replies = c.replies || [];
+    replies.forEach(function(r){
+      html += '<div class="comment">'
++ '<b>'+(r.name || "Admin")+' <span class="verifyBadge">ADMIN</span></b>'
++ '<p>'+(r.text || "")+'</p>'
++ '</div>';
+    });
+
+    html += '</div>';
+  });
+
+  document.getElementById("comments").innerHTML = html;
+}
+  function replyComment(id){
+  var text = prompt("Balas komentar:");
+  if(!text) return;
+
+  fetch("/api/admin/posts/"+active.id+"/comments/"+id+"/reply",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify({ text:text })
+  }).then(()=>load());
+  }
+  
+function closeModal(){
+  var player = document.getElementById("player");
+  document.getElementById("modal").classList.add("hidden");
+  player.pause();
+  player.src = "";
+}
+
+document.getElementById("search").oninput = render;
+
+load();
+
+setInterval(function(){
+  load().then(function(){
+    refreshActiveFromData();
+  });
+},7000);
+  function masukWeb(){
+  document.getElementById("agePopup").style.display="none";
+}
+
+function keluarWeb(){
+  window.location.href="https://google.com";
+}
+
+</script>
+<div id="agePopup" class="ageOverlay">
+  <div class="ageBox">
+    <span class="closeX" onclick="masukWeb()">✕</span>
+    <img src="cute-cat.png" class="ageImage" alt="cute cat">
+
+    <div class="ageIcon">⚠️</div>
+    <h2>Peringatan Konten 18+</h2>
+
+    <p>
+      Website ini berisi konten khusus dewasa.<br>
+      Semua konten hanya untuk hiburan.
+    </p>
+
+    <div class="ageWarn">
+      Jangan meniru apa pun yang ada di dalam video.
+    </div>
+
+    <p>
+      Dengan melanjutkan, kamu menyatakan sudah cukup umur
+      dan bertanggung jawab atas tindakanmu sendiri.
+    </p>
+
+    <button class="ageEnter" onclick="masukWeb()">
+      Saya Mengerti & Masuk
+    </button>
+
+    <button class="ageExit" onclick="keluarWeb()">
+      Keluar
+    </button>
+  </div>
+<style>
+/* 🔥 FORCE FLATTEN TOTAL */
+
+.comment div{
+  margin-left:0!important;
+  padding-left:0!important;
+}
+
+.comment{
+  background:#fff7fc!important;
+  padding:14px!important;
+  border-radius:18px!important;
+  margin:12px 0!important;
+  border-left:none!important;
+}
+
+.adminReplyShow{
+  display:flex!important;
+  align-items:flex-start!important;
+  gap:10px!important;
+  background:#ffe2f1!important;
+  padding:12px!important;
+  border-radius:14px!important;
+  margin-top:10px!important;
+  margin-left:0!important;
+  border-left:none!important;
+  width:fit-content!important;
+  max-width:90%!important;
+  }
+  .replyBtn{
+  width:auto!important;
+  height:auto!important;
+  padding:8px 12px!important;
+  border-radius:12px!important;
+  }
+
+  /* 🔥 HAPUS TAP HIGHLIGHT */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 🔥 HAPUS BORDER BIRU / KOTAK */
+*:focus {
+  outline: none !important;
+}
+
+*:active {
+  outline: none !important;
+}
+
+/* 🔥 KHUSUS BUTTON / LINK */
+button, a, div {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent;
+  }
+
+  * {
+  -webkit-tap-highlight-color: transparent;
+  outline: none !important;
+}
+
+*:focus,
+*:active,
+*:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* 🔥 KHUSUS ELEMENT INTERAKTIF */
+button,
+a,
+div,
+span {
+  outline: none !important;
+  box-shadow: none !important;
+  -webkit-tap-highlight-color: transparent;
+  }
+
+  * {
+  -webkit-tap-highlight-color: transparent !important;
+  -webkit-focus-ring-color: transparent !important;
+}
+
+:focus {
+  outline: none !important;
+}
+
+.focus-visible {
+  outline: none !important;
+}
+
+/* 🔥 TAMBAH DI SINI */
+.verifyBadge{
+  background:#4fc3f7;
+  color:white;
+  font-size:10px;
+  padding:2px 6px;
+  border-radius:6px;
+  margin-left:6px;
+  }
+</style>
+</html>

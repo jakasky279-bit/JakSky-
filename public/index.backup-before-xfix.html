@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>XYRON VIDEO</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="userTop">
+  <input id="search" placeholder="🔍 Cari video...">
+  <div class="filters">
+    <button class="active" onclick="setFilter('all',this)">Semua</button>
+    <button onclick="setFilter('vip',this)">VIP</button>
+    <button onclick="setFilter('expired',this)">Expired</button>
+    <button onclick="setFilter('new',this)">Terbaru</button>
+    <button onclick="setFilter('trend',this)">Trending</button>
+    <button onclick="setFilter('fav',this)">Favorit</button>
+  </div>
+  <div id="modeNow">Mode: Semua</div>
+</div>
+
+<div id="list"></div>
+
+<div id="modal" class="hidden">
+  <div class="modalBox">
+    <button class="closeBtn" onclick="closeModal()">×</button>
+
+    <div id="unlockBox"></div>
+
+    <video id="player" controls class="hidden"></video>
+    <div id="videoTabs"></div>
+
+    <h3 id="modalTitle"></h3>
+    <p id="modalDesc"></p>
+
+    <button id="downloadBtn" class="downloadBtn hidden" onclick="downloadPost()">⬇️ Download Video</button>
+
+    <div class="ratingBox">
+      <b>⭐ Rating:</b>
+      <div id="rating"></div>
+    </div>
+
+    <div class="actionBox">
+      <button onclick="likePost()">👍 <span id="likeCount">0</span></button>
+      <button onclick="unlikePost()">👎 <span id="unlikeCount">0</span></button>
+    </div>
+
+    <div id="comments"></div>
+
+    <input id="nameInput" placeholder="Nama kamu">
+    <textarea id="commentInput" placeholder="Tulis komentar..."></textarea>
+    <button onclick="sendComment()">Kirim</button>
+  </div>
+</div>
+
+<script>
+let posts = [];
+let active = null;
+let currentVideos = [];
+let currentFilter = "all";
+
+let USER_ID = localStorage.getItem("xyron_user_id");
+if(!USER_ID){
+  USER_ID = "u_" + Date.now() + "_" + Math.random().toString(36).slice(2);
+  localStorage.setItem("xyron_user_id", USER_ID);
+}
+
+let USER_NAME = localStorage.getItem("xyron_username") || "";
+let FAVS = JSON.parse(localStorage.getItem("xyron_favs") || "[]");
+
+async function load(){
+  try{
+    const res = await fetch("/api/posts?ts="+Date.now());
+    posts = await res.json();
+    if(!Array.isArray(posts)) posts = [];
+    render();
+  }catch(e){
+    list.innerHTML = `<div class="empty">Gagal memuat video.</div>`;
+  }
+}
+
+function setFilter(f,btn){
+  currentFilter = f;
+  document.querySelectorAll(".filters button").forEach(b=>b.classList.remove("active"));
+  if(btn) btn.classList.add("active");
+  modeNow.innerText = "Mode: " + (btn ? btn.innerText : "Semua");
+  render();
+}
+
+function toggleFav(e,id){
+  e.stopPropagation();
+  FAVS = FAVS.includes(id) ? FAVS.filter(x=>x!==id) : [...FAVS,id];
+  localStorage.setItem("xyron_favs", JSON.stringify(FAVS));
+  render();
+}
+
+function render(){
+  let data = [...posts];
+
+  if(currentFilter === "vip") data = data.filter(p=>p.isVip || p.locked || p.videoKey);
+  if(currentFilter === "expired") data = data.filter(p=>p.expired);
+  if(currentFilter === "new") data.sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
+  if(currentFilter === "trend") data.sort((a,b)=>(b.views||0)-(a.views||0));
+  if(currentFilter === "fav") data = data.filter(p=>FAVS.includes(p.id));
+
+  const q = search.value.toLowerCase();
+  if(q) data = data.filter(p=>(p.title||"").toLowerCase().includes(q) || (p.desc||"").toLowerCase().includes(q));
+
+  if(!data.length){
+    list.innerHTML = `<div class="empty">Belum ada video.</div>`;
+    return;
+  }
+
+  list.innerHTML = data.map(p=>`
+    <div class="card" onclick="openPost('${p.id}')">
+      <div class="thumbWrap">
+        <img src="${p.thumb || ""}">
+        <div class="playIcon">▶</div>
+        <button class="favBtn" onclick="toggleFav(event,'${p.id}')">${FAVS.includes(p.id) ? "★" : "☆"}</button>
+        ${(p.isVip || p.locked || p.videoKey) ? `<span class="vipBadge cardBadge">VIP</span>` : ""}
+        ${p.expired ? `<span class="adminBadge leftBadge">EXPIRED</span>` : ""}
+      </div>
+      <div class="cardBody">
+        <b>${p.title || "Tanpa Judul"}</b>
+        <div class="meta">
+          <span>⭐ ${p.ratingAvg || "0.0"}</span>
+          <span>👁 ${p.views || 0}</span>
+          <span>👍 ${p.likes || 0}</span>
+          <span>💬 ${(p.comments||[]).length}</span>
+          <span>⬇️ ${p.downloads || 0}</span>
+        </div>
+      </div>
+    </div>
+  `).join("");
+}
+
+async function openPost(id){
+  active = posts.find(p=>p.id===id);
+  if(!active) return;
+
+  modal.classList.remove("hidden");
+  modalTitle.innerText = active.title || "";
+  modalDesc.innerText = active.desc || "";
+  player.classList.add("hidden");
+  downloadBtn.classList.add("hidden");
+  player.src = "";
+  currentVideos = [];
+  videoTabs.innerHTML = "";
+  unlockBox.innerHTML = "";
+
+  likeCount.innerText = active.likes || 0;
+  unlikeCount.innerText = active.unlikes || 0;
+  renderRating();
+  renderComments();
+
+  await fetch(`/api/posts/${id}/view`,{method:"POST",headers:{"x-user-id":USER_ID}}).catch(()=>{});
+
+  if(active.expired){
+    unlockBox.innerHTML = `<div class="lockBox"><b>Video sudah expired.</b></div>`;
+    return;
+  }
+
+  if(active.locked || active.isVip || active.videoKey){
+    unlockBox.innerHTML = `<div class="lockBox"><b>🔒 Video VIP</b><input id="unlockKey" placeholder="Masukkan kunci VIP"><button onclick="unlockVideo()">Buka Video</button></div>`;
+    return;
+  }
+
+  setVideos(active.videos || (active.video ? [active.video] : []));
+}
+
+async function unlockVideo(){
+  const key = document.getElementById("unlockKey").value.trim();
+  const res = await fetch(`/api/video/${active.id}/unlock`,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({key})
+  });
+  const data = await res.json();
+  if(!res.ok) return alert(data.message || "Kunci salah");
+  unlockBox.innerHTML = "";
+  setVideos(data.videos || (data.video ? [data.video] : []));
+}
+
+function setVideos(videos){
+  currentVideos = videos || [];
+  if(!currentVideos.length) return;
+  player.classList.remove("hidden");
+  downloadBtn.classList.remove("hidden");
+  playPart(0);
+  videoTabs.innerHTML = currentVideos.map((v,i)=>`<button onclick="playPart(${i})">Video ${i+1}</button>`).join("");
+}
+
+function playPart(i){
+  player.src = currentVideos[i];
+  player.play();
+}
+
+
+
+
+async function downloadPost(){
+  if(!active) return;
+
+  if(!currentVideos || !currentVideos.length){
+    alert("Buka video dulu sebelum download.");
+    return;
+  }
+
+  try{
+    const res = await fetch(`/api/download/${active.id}`,{method:"POST"});
+    const updated = await res.json();
+
+    if(res.ok){
+      active = updated;
+      posts = posts.map(p=>p.id===updated.id ? updated : p);
+      render();
+    }else{
+      alert(updated.message || "Gagal tambah download");
+    }
+  }catch(e){
+    alert("Gagal konek ke server download");
+  }
+
+  const a = document.createElement("a");
+  a.href = currentVideos[0];
+  a.download = (active.title || "video") + ".mp4";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+function renderRating(){
+  rating.innerHTML = [1,2,3,4,5].map(n=>`<button onclick="ratePost(${n})">${n}</button>`).join("");
+}
+
+async function ratePost(n){
+  const res = await fetch(`/api/posts/${active.id}/rate`,{
+    method:"POST",
+    headers:{"Content-Type":"application/json","x-user-id":USER_ID},
+    body:JSON.stringify({rate:n})
+  });
+  if(res.ok){
+    active = await res.json();
+    posts = posts.map(p=>p.id===active.id?active:p);
+    render();
+  }
+}
+
+async function likePost(){
+  const res = await fetch(`/api/posts/${active.id}/like`,{method:"POST"});
+  if(res.ok){
+    active = await res.json();
+    likeCount.innerText = active.likes || 0;
+    posts = posts.map(p=>p.id===active.id?active:p);
+    render();
+  }
+}
+
+async function unlikePost(){
+  const res = await fetch(`/api/posts/${active.id}/unlike`,{method:"POST"});
+  if(res.ok){
+    active = await res.json();
+    unlikeCount.innerText = active.unlikes || 0;
+    posts = posts.map(p=>p.id===active.id?active:p);
+    render();
+  }
+}
+
+function renderComments(){
+  comments.innerHTML = (active.comments || []).map((c,i)=>`
+    <div class="comment">
+      <div class="commentHead">
+        <b>${c.name || "Anonim"}</b>
+        ${c.isAdmin ? `<span class="adminBadge">ADMIN</span><span class="verifiedBadge">✓</span>` : ""}
+        ${(c.userId && c.userId===USER_ID) ? `<button class="miniDelete" onclick="deleteOwnComment(${i})">Hapus</button>` : ""}
+      </div>
+
+      <p>${c.text || ""}</p>
+
+      ${(c.replies||[]).map((r,ri)=>`
+        <div class="reply ${r.isAdmin?"adminReply":""}">
+          <b>${r.name||"Anonim"}</b>
+          ${r.isAdmin?` <span class="adminBadge">ADMIN</span><span class="verifiedBadge">✓</span>`:""}
+          <p>${r.text||""}</p>
+        </div>
+      `).join("")}
+
+      <div class="replyBox">
+        <input id="reply_${c.id || i}" placeholder="Balas komentar...">
+        <button onclick="replyComment('${c.id || i}')">Balas</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+async function deleteOwnComment(i){
+  if(!active) return;
+  if(!confirm("Hapus komentar kamu?")) return;
+
+  const res = await fetch(`/api/user/delete-comment/${active.id}/${i}`,{
+    method:"DELETE",
+    headers:{"x-user-id":USER_ID}
+  });
+
+  const data = await res.json();
+
+  if(res.ok){
+    active = data;
+    posts = posts.map(p=>p.id===active.id?active:p);
+    renderComments();
+    render();
+  }else{
+    alert(data.message || "Gagal hapus komentar");
+  }
+}
+
+async function deleteComment(i){
+  if(!active) return;
+  if(!confirm("Hapus komentar ini?")) return;
+
+  const res = await fetch(`/api/delete-comment/${active.id}/${i}`,{method:"DELETE"});
+  if(res.ok){
+    active = await res.json();
+    posts = posts.map(p=>p.id===active.id?active:p);
+    renderComments();
+    render();
+  }
+}
+
+async function deleteReply(i,ri){
+  if(!active) return;
+  if(!confirm("Hapus balasan ini?")) return;
+
+  const res = await fetch(`/api/delete-reply/${active.id}/${i}/${ri}`,{method:"DELETE"});
+  if(res.ok){
+    active = await res.json();
+    posts = posts.map(p=>p.id===active.id?active:p);
+    renderComments();
+    render();
+  }
+}
+
+async function sendComment(){
+  const text = commentInput.value.trim();
+  if(!text) return;
+  if(!USER_NAME){
+    USER_NAME = nameInput.value.trim() || "User";
+    localStorage.setItem("xyron_username", USER_NAME);
+  }
+  const res = await fetch(`/api/posts/${active.id}/comment`,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({name:USER_NAME,text,userId:USER_ID})
+  });
+  if(res.ok){
+    active = await res.json();
+    posts = posts.map(p=>p.id===active.id?active:p);
+    commentInput.value = "";
+    renderComments();
+    render();
+  }
+}
+
+async function replyComment(cid){
+  const inp=document.getElementById("reply_"+cid);
+  if(!inp || !inp.value.trim()) return;
+  if(!USER_NAME){
+    USER_NAME = nameInput.value.trim() || "User";
+    localStorage.setItem("xyron_username", USER_NAME);
+  }
+  const res = await fetch(`/api/posts/${active.id}/comments/${cid}/reply`,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({name:USER_NAME,text:inp.value})
+  });
+  if(res.ok){
+    active = await res.json();
+    posts = posts.map(p=>p.id===active.id?active:p);
+    renderComments();
+    render();
+  }
+}
+
+
+async function deleteOwnComment(i){
+  if(!active) return;
+  if(!confirm("Hapus komentar kamu?")) return;
+
+  const res = await fetch(`/api/user/delete-comment/${active.id}/${i}`,{
+    method:"DELETE",
+    headers:{"x-user-id":USER_ID}
+  });
+
+  const data = await res.json();
+
+  if(res.ok){
+    active = data;
+    posts = posts.map(p=>p.id===active.id?active:p);
+    renderComments();
+    render();
+  }else{
+    alert(data.message || "Gagal hapus komentar");
+  }
+}
+
+function closeModal(){
+  modal.classList.add("hidden");
+  player.pause();
+  player.src="";
+}
+
+search.oninput = render;
+
+
+load();
+
+// AUTO_REFRESH_FIXED
+setInterval(async ()=>{
+  try{
+    const res = await fetch("/api/posts?time="+Date.now());
+    const data = await res.json();
+    if(Array.isArray(data)){
+      posts = data;
+      render();
+    }
+  }catch(e){}
+},2000);
+
+
+// AUTO_REALTIME_DOWNLOAD_UPDATE
+setInterval(async ()=>{
+  try{
+    const res = await fetch("/api/posts?ts="+Date.now());
+    const fresh = await res.json();
+    if(Array.isArray(fresh)){
+      posts = fresh;
+      render();
+    }
+  }catch(e){}
+},3000);
+
+</script>
+
+
+<script>
+// ===== FIX AVATAR RENDER =====
+function renderAvatar(c){
+  if(c.avatar){
+    return `<img src="${c.avatar}" class="avatar">`
+  }
+  return `<div class="avatarFallback">${c.name ? c.name[0].toUpperCase() : "U"}</div>`
+}
+</script>
+
+
+<script id="forceAdminPP">
+function forceAdminPP(){
+  document.querySelectorAll(".adminReplyBox,.adminCommentBox,.reply,.comment").forEach(box=>{
+    if(!box.innerText.includes("Admin")) return;
+    if(box.querySelector(".adminRealPP")) return;
+
+    const img=document.createElement("img");
+    img.src="/uploads/admin.png?v="+Date.now();
+    img.className="adminRealPP";
+
+    const first=box.firstElementChild;
+    if(first){
+      first.prepend(img);
+    }else{
+      box.prepend(img);
+    }
+  });
+}
+setInterval(forceAdminPP,500);
+setTimeout(forceAdminPP,300);
+</script>
+
+
+<script id="antiSpamSafe">
+/* ===== ANTI SPAM KOMENTAR (SAFE VERSION) ===== */
+let lastCommentTime = 0;
+
+document.addEventListener("submit", e=>{
+  try{
+    const btn = e.target.querySelector("button");
+    if(!btn) return;
+
+    if(btn.innerText.toLowerCase().includes("kirim")){
+      const now = Date.now();
+
+      if(now - lastCommentTime < 5000){
+        e.preventDefault();
+        alert("Tunggu 5 detik sebelum komentar lagi ya.");
+        return;
+      }
+
+      lastCommentTime = now;
+    }
+  }catch(err){}
+});
+</script>
+
+
+<script id="roleBadgeRender">
+function roleBadge(role){
+  role = role || "admin";
+  if(role === "owner") return `<span class="roleBadge role_owner">👑 OWNER</span>`;
+  if(role === "moderator") return `<span class="roleBadge role_moderator">🛡️ MOD</span>`;
+  return `<span class="roleBadge role_admin">✔️ ADMIN</span>`;
+}
+setInterval(()=>{
+  document.querySelectorAll(".adminBadge").forEach(b=>{
+    const box=b.closest(".comment,.reply,.adminCommentBox,.adminReplyBox");
+    if(box && !box.querySelector(".roleBadge")){
+      b.insertAdjacentHTML("afterend", `<span class="roleBadge role_admin">✔️ ADMIN</span>`);
+    }
+  });
+},700);
+</script>
+
+
+<script id="DEVICE_ID_FIX_FINAL">
+(function(){
+  let id=localStorage.getItem("deviceId");
+  if(!id){
+    id="u_"+Date.now()+"_"+Math.random().toString(36).slice(2);
+    localStorage.setItem("deviceId",id);
+  }
+
+  const oldFetch=window.fetch;
+  window.fetch=function(url,opt={}){
+    opt.headers=opt.headers||{};
+    if(typeof url==="string" && url.startsWith("/api")){
+      opt.headers["x-user-id"]=id;
+    }
+    return oldFetch(url,opt);
+  };
+})();
+</script>
+
+</body>
+</html>
+
+<script id="USER_BUTTON_FIX_FINAL">
+(function(){
+  let deviceId=localStorage.getItem("deviceId");
+  if(!deviceId){
+    deviceId="u_"+Date.now()+"_"+Math.random().toString(36).slice(2);
+    localStorage.setItem("deviceId",deviceId);
+  }
+
+  async function api(url,body={}){
+    const r=await fetch(url,{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "x-user-id":deviceId
+      },
+      body:JSON.stringify(body)
+    });
+    return r.json().catch(()=>({}));
+  }
+
+  window.fixLike=function(id){return api("/api/user/like/"+id).then(()=>location.reload())}
+  window.fixUnlike=function(id){return api("/api/user/unlike/"+id).then(()=>location.reload())}
+  window.fixRating=function(id,val){return api("/api/user/rating/"+id,{rating:val}).then(()=>location.reload())}
+  window.fixView=function(id){return api("/api/user/view/"+id)}
+
+  window.fixUnlock=async function(id){
+    const input=document.querySelector('input[placeholder*="kunci"],input[placeholder*="Kunci"],input[placeholder*="VIP"],input[placeholder*="vip"]');
+    const key=input ? input.value.trim() : prompt("Masukkan kunci VIP");
+    const data=await api("/api/user/unlock/"+id,{key});
+    if(!data.ok){
+      alert(data.message||"Kunci salah");
+      return;
+    }
+    const video=data.video || (data.videos&&data.videos[0]);
+    if(video){
+      window.open(video,"_blank");
+    }else{
+      alert("Video tidak ditemukan");
+    }
+  }
+})();
+</script>
+
+<script id="FIX_BUTTON_LIKE_RATING_FINAL">
+(function(){
+  let deviceId=localStorage.getItem("deviceId");
+  if(!deviceId){
+    deviceId="u_"+Date.now()+"_"+Math.random().toString(36).slice(2);
+    localStorage.setItem("deviceId",deviceId);
+  }
+
+  function getId(id){
+    if(id) return id;
+    if(window.active && active.id) return active.id;
+    if(window.currentPost && currentPost.id) return currentPost.id;
+    alert("Buka videonya dulu.");
+    return null;
+  }
+
+  async function post(url,body={}){
+    const res=await fetch(url,{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "x-user-id":deviceId
+      },
+      body:JSON.stringify(body)
+    });
+    return res.json();
+  }
+
+  async function refreshData(updated){
+    if(window.active && updated && updated.id) active=updated;
+    try{
+      const r=await fetch("/api/posts?ts="+Date.now());
+      const data=await r.json();
+      if(Array.isArray(data)){
+        window.posts=data;
+        if(typeof posts!=="undefined") posts=data;
+      }
+    }catch(e){}
+
+    if(typeof render==="function") render();
+    if(typeof renderCounts==="function") renderCounts();
+    if(typeof load==="function") load();
+  }
+
+  window.likePost=async function(id){
+    id=getId(id); if(!id) return;
+    const data=await post("/api/fix/like/"+id);
+    await refreshData(data);
+  };
+
+  window.unlikePost=async function(id){
+    id=getId(id); if(!id) return;
+    const data=await post("/api/fix/unlike/"+id);
+    await refreshData(data);
+  };
+
+  window.dislikePost=window.unlikePost;
+
+  window.ratePost=async function(n,id){
+    id=getId(id); if(!id) return;
+    const data=await post("/api/fix/rating/"+id,{rating:n});
+    await refreshData(data);
+  };
+
+  window.ratingPost=window.ratePost;
+})();
+</script>
+
+<script id="FIX_BUTTON_LIKE_RATING_FINAL">
+(function(){
+  let deviceId=localStorage.getItem("deviceId");
+  if(!deviceId){
+    deviceId="u_"+Date.now()+"_"+Math.random().toString(36).slice(2);
+    localStorage.setItem("deviceId",deviceId);
+  }
+
+  function getId(id){
+    if(id) return id;
+    if(window.active && active.id) return active.id;
+    if(window.currentPost && currentPost.id) return currentPost.id;
+    alert("Buka videonya dulu.");
+    return null;
+  }
+
+  async function post(url,body={}){
+    const res=await fetch(url,{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "x-user-id":deviceId
+      },
+      body:JSON.stringify(body)
+    });
+    return res.json();
+  }
+
+  async function refreshData(updated){
+    if(window.active && updated && updated.id) active=updated;
+    try{
+      const r=await fetch("/api/posts?ts="+Date.now());
+      const data=await r.json();
+      if(Array.isArray(data)){
+        window.posts=data;
+        if(typeof posts!=="undefined") posts=data;
+      }
+    }catch(e){}
+
+    if(typeof render==="function") render();
+    if(typeof renderCounts==="function") renderCounts();
+    if(typeof load==="function") load();
+  }
+
+  window.likePost=async function(id){
+    id=getId(id); if(!id) return;
+    const data=await post("/api/fix/like/"+id);
+    await refreshData(data);
+  };
+
+  window.unlikePost=async function(id){
+    id=getId(id); if(!id) return;
+    const data=await post("/api/fix/unlike/"+id);
+    await refreshData(data);
+  };
+
+  window.dislikePost=window.unlikePost;
+
+  window.ratePost=async function(n,id){
+    id=getId(id); if(!id) return;
+    const data=await post("/api/fix/rating/"+id,{rating:n});
+    await refreshData(data);
+  };
+
+  window.ratingPost=window.ratePost;
+})();
+</script>

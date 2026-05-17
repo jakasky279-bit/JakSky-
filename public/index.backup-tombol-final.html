@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>XYRON VIDEO</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.hidden{display:none!important}
+body{background:linear-gradient(135deg,#ffd6e8,#ffeaf4)}
+.userTop{position:sticky;top:0;z-index:9;background:linear-gradient(135deg,#ffd6e8,#ffeaf4);padding:10px}
+#search{width:100%;padding:14px;border-radius:18px;border:2px solid #ff4fa3}
+#list{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;padding:14px}
+.card{background:white;border-radius:20px;overflow:hidden;box-shadow:0 12px 28px rgba(255,63,157,.22)}
+.thumb{position:relative;height:280px;background:#ffe3f1}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.badge{position:absolute;top:8px;right:8px;padding:5px 9px;border-radius:999px;color:white;font-size:11px;font-weight:900;background:#ff3f9d}
+.body{padding:12px}
+.meta{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}
+.meta span{background:#fff;border-radius:999px;padding:6px 9px;box-shadow:0 4px 12px rgba(255,63,157,.15);font-size:12px;font-weight:800}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99;overflow:auto;padding:20px}
+.modalBox{background:white;max-width:640px;margin:auto;border-radius:24px;padding:18px}
+video{width:100%;border-radius:18px;background:#000}
+.btns button,.rate button,#tabs button{margin:5px;padding:10px 14px;border-radius:999px;border:0;background:#ff3f9d;color:white;font-weight:900}
+.clicked{background:#22c55e!important}
+.disabledBtn{background:#999!important}
+.lockBox{background:#fff1f8;padding:14px;border-radius:18px;margin:12px 0}
+.lockBox input,.commentInput{width:100%;padding:13px;border-radius:14px;border:1px solid #ffc6dc;margin:7px 0}
+.comment{background:#fff1f8;border-radius:14px;padding:10px;margin:8px 0}
+@media(max-width:430px){.thumb{height:230px}#list{gap:10px;padding:10px}}
+</style>
+</head>
+<body>
+
+<div class="userTop">
+  <input id="search" placeholder="🔍 Cari video...">
+</div>
+
+<div id="list"></div>
+
+<div id="modal" class="hidden">
+  <div class="modalBox">
+    <button onclick="closeModal()">×</button>
+    <div id="lockArea"></div>
+    <video id="player" controls class="hidden"></video>
+    <div id="tabs"></div>
+    <h3 id="mtitle"></h3>
+    <p id="mdesc"></p>
+
+    <div class="btns">
+      <button id="likeBtn" onclick="doLike()">👍 Like</button>
+      <button id="unlikeBtn" onclick="doUnlike()">👎 Unlike</button>
+    </div>
+
+    <div class="rate">
+      Rating:
+      <button onclick="doRate(1)">1</button>
+      <button onclick="doRate(2)">2</button>
+      <button onclick="doRate(3)">3</button>
+      <button onclick="doRate(4)">4</button>
+      <button onclick="doRate(5)">5</button>
+    </div>
+
+    <div id="comments"></div>
+    <input id="cname" class="commentInput" placeholder="Nama">
+    <input id="ctext" class="commentInput" placeholder="Komentar">
+    <button onclick="sendComment()">Kirim Komentar</button>
+  </div>
+</div>
+
+<script>
+let posts=[], active=null, videos=[];
+let uid=localStorage.getItem("deviceId");
+if(!uid){uid="u_"+Date.now()+"_"+Math.random().toString(36).slice(2);localStorage.setItem("deviceId",uid)}
+
+async function api(url,body={}){
+  const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json","x-user-id":uid},body:JSON.stringify(body)});
+  return {ok:r.ok,data:await r.json().catch(()=>({}))};
+}
+async function load(){
+  const r=await fetch("/api/posts?ts="+Date.now());
+  posts=await r.json();
+  render();
+}
+function isLocked(p){return !!String(p.key||p.vipKey||p.password||"").trim() || p.type==="vip"}
+function render(){
+  const q=(search.value||"").toLowerCase();
+  const data=posts.filter(p=>(p.title||"").toLowerCase().includes(q));
+  list.innerHTML=data.map(p=>`
+    <div class="card" onclick="openPost('${p.id}')">
+      <div class="thumb">
+        <img src="${p.thumb||p.thumbnail||''}">
+        ${isLocked(p)?'<span class="badge">VIP 🔒</span>':''}
+      </div>
+      <div class="body">
+        <b>${p.title||'Tanpa judul'}</b>
+        <div class="meta">
+          <span>⭐ ${p.ratingAvg||p.rating||0}</span>
+          <span>👁 ${p.views||0}</span>
+          <span>👍 ${p.likes||0}</span>
+          <span>👎 ${p.unlikes||p.dislikes||0}</span>
+          <span>💬 ${(p.comments||[]).length}</span>
+          <span>⬇️ ${p.downloads||0}</span>
+        </div>
+      </div>
+    </div>
+  `).join("");
+}
+async function openPost(id){
+  active=posts.find(p=>p.id==id);
+  modal.classList.remove("hidden");
+  mtitle.innerText=active.title||"";
+  mdesc.innerText=active.desc||"";
+  player.classList.add("hidden");
+  player.src="";
+  tabs.innerHTML="";
+  lockArea.innerHTML="";
+  videos=[];
+  await api("/api/x/view/"+id);
+  if(isLocked(active)){
+    lockArea.innerHTML=`<div class="lockBox"><b>🔒 Masukkan kunci VIP</b><input id="vipInput" placeholder="Kunci VIP"><button onclick="unlockNow()">Buka</button></div>`;
+  }else{
+    setVideos(active.videos||[active.video].filter(Boolean));
+  }
+  paintButtons();
+  renderComments();
+  await load();
+}
+async function unlockNow(){
+  const key=document.getElementById("vipInput").value.trim();
+  const r=await api("/api/x/unlock/"+active.id,{key});
+  if(!r.ok){alert(r.data.message||"Kunci salah");return}
+  lockArea.innerHTML="";
+  setVideos(r.data.videos||[]);
+}
+function setVideos(v){
+  videos=v||[];
+  if(!videos.length)return;
+  player.classList.remove("hidden");
+  play(0);
+  tabs.innerHTML=videos.map((x,i)=>`<button onclick="play(${i})">Video ${i+1}</button>`).join("");
+}
+function play(i){player.src=videos[i];player.play().catch(()=>{})}
+function paintButtons(){
+  likeBtn.className=active?.likedBy?.[uid]?"clicked":"";
+  unlikeBtn.className=active?.unlikedBy?.[uid]?"clicked":"";
+}
+async function doLike(){const r=await api("/api/x/like/"+active.id);active=r.data;paintButtons();await load()}
+async function doUnlike(){const r=await api("/api/x/unlike/"+active.id);active=r.data;paintButtons();await load()}
+async function doRate(n){const r=await api("/api/x/rating/"+active.id,{rating:n}); if(!r.ok) alert(r.data.message); active=r.data; await load(); alert("Rating tersimpan: "+n)}
+async function sendComment(){
+  const name=cname.value.trim()||"User", text=ctext.value.trim();
+  if(!text)return;
+  const r=await fetch("/api/posts/"+active.id+"/comment",{method:"POST",headers:{"Content-Type":"application/json","x-user-id":uid},body:JSON.stringify({name,text,userId:uid})});
+  active=await r.json(); ctext.value=""; renderComments(); await load();
+}
+function renderComments(){
+  comments.innerHTML=(active.comments||[]).map(c=>`<div class="comment"><b>${c.name||'User'}</b><p>${c.text||''}</p>${(c.replies||[]).map(r=>`<div class="comment"><b>${r.name||'Admin'} ✅</b><p>${r.text||''}</p></div>`).join("")}</div>`).join("");
+}
+function closeModal(){modal.classList.add("hidden");player.pause();player.src=""}
+search.oninput=render;
+load();
+</script>
+</body>
+</html>
+
+<script id="LIKE_UI_LOCK_FIX">
+(function(){
+  const oldDoLike = window.doLike;
+  const oldDoUnlike = window.doUnlike;
+
+  window.doLike = async function(){
+    const r = await api("/api/z/like/" + active.id);
+    if(!r.ok){
+      alert(r.data.message || "Tidak bisa like");
+      return;
+    }
+    active = r.data;
+    await load();
+    paintButtons();
+  }
+
+  window.doUnlike = async function(){
+    const r = await api("/api/z/unlike/" + active.id);
+    if(!r.ok){
+      alert(r.data.message || "Tidak bisa unlike");
+      return;
+    }
+    active = r.data;
+    await load();
+    paintButtons();
+  }
+
+  const oldPaint = window.paintButtons;
+  window.paintButtons = function(){
+    if(!active) return;
+
+    likeBtn.className = "";
+    unlikeBtn.className = "";
+
+    if(active.likedBy && active.likedBy[uid]){
+      likeBtn.className = "clicked";
+      unlikeBtn.className = "disabledBtn";
+    }
+
+    if(active.unlikedBy && active.unlikedBy[uid]){
+      unlikeBtn.className = "clicked";
+      likeBtn.className = "disabledBtn";
+    }
+  }
+})();
+</script>

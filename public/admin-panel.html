@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Admin Panel PRO</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial;background:linear-gradient(135deg,#ffe1ef,#ffc1dc);color:#222}
+.top{position:sticky;top:0;background:white;padding:14px 22px;border-bottom:2px solid #ff5bad;display:flex;justify-content:space-between;align-items:center;font-weight:900;z-index:10}
+.wrap{width:94%;max-width:900px;margin:20px auto}
+.card{background:white;border-radius:24px;padding:24px;margin-bottom:18px;box-shadow:0 12px 30px #ff3f9d33}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stat{background:#fff0f6;border-radius:16px;padding:14px;text-align:center;font-weight:900}
+.stat b{font-size:24px;color:#ff3f9d}
+input,select{width:100%;padding:13px;margin:8px 0 12px;border:1px solid #ffc2dc;border-radius:14px}
+button{border:0;border-radius:999px;background:#ff3f9d;color:white;padding:11px 16px;font-weight:900;margin:5px}
+button:disabled{opacity:.6}
+.logout{background:#ef4444}
+.row2{display:grid;grid-template-columns:1fr 130px;gap:10px}
+.item{display:grid;grid-template-columns:90px 1fr;gap:12px;background:#fff6fb;border:1px solid #ffd1e5;border-radius:18px;padding:12px;margin:12px 0}
+.item img{width:90px;height:90px;object-fit:cover;border-radius:14px;background:#ffd1e5}
+.badge{display:inline-block;font-size:11px;border-radius:99px;padding:5px 8px;background:#1d9bf0;color:white;font-weight:900;margin:2px}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:white;color:#ff3f9d;padding:12px 18px;border-radius:999px;box-shadow:0 10px 25px #0003;display:none;font-weight:900;z-index:99}
+.uploadStatus{display:none;background:#fff0f6;border:1px solid #ffc2dc;border-radius:16px;padding:12px;margin-top:10px;font-weight:900;color:#ff3f9d;white-space:pre-line}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <span>🔥 Admin Panel PRO</span>
+  <button class="logout" onclick="logout()">Logout</button>
+</div>
+
+<div class="wrap">
+  <div class="card">
+    <h2>Dashboard</h2>
+    <p id="who">Memuat...</p>
+    <div class="grid">
+      <div class="stat"><b id="totalPost">0</b><br>Video</div>
+      <div class="stat"><b id="totalComment">0</b><br>Komentar</div>
+      <div class="stat"><b id="totalView">0</b><br>Views</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Upload Video</h2>
+
+    <input id="upTitle" placeholder="Judul video">
+    <input id="upDesc" placeholder="Deskripsi">
+
+    <select id="upType">
+      <option value="public">Public / Gratis</option>
+      <option value="vip">VIP / Kunci</option>
+    </select>
+
+    <div class="row2">
+      <input id="upExpiredCustom" type="number" placeholder="Expired manual">
+      <select id="upExpiredUnit">
+        <option value="hours">Jam</option>
+        <option value="days">Hari</option>
+        <option value="minutes">Menit</option>
+      </select>
+    </div>
+
+    <input id="upKey" placeholder="Kunci VIP">
+
+    <select id="upExpired">
+      <option value="">Tidak expired</option>
+      <option value="1">1 Jam</option>
+      <option value="24">1 Hari</option>
+    </select>
+
+    <p><b>Thumbnail:</b></p>
+    <input id="upThumb" type="file" accept="image/*">
+
+    <p><b>Video:</b></p>
+    <input id="upVideos" type="file" accept="video/*" multiple>
+
+    <button id="uploadBtn" onclick="uploadVideos()">Upload Sekarang</button>
+    <div id="uploadStatus" class="uploadStatus">Menunggu upload...</div>
+  </div>
+
+  <div class="card">
+    <h2>Kelola Video</h2>
+    <div id="posts">Memuat...</div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const adminName =
+  localStorage.getItem("admin_login") ||
+  localStorage.getItem("adminName") ||
+  sessionStorage.getItem("admin_login") ||
+  sessionStorage.getItem("adminName");
+
+if(!adminName){
+  location.href="/admin.html?v=login";
+}
+
+document.getElementById("who").innerText="Login sebagai: "+adminName;
+
+let typing=false;
+
+document.querySelectorAll("input,textarea").forEach(el=>{
+  el.addEventListener("focus",()=>typing=true);
+  el.addEventListener("blur",()=>typing=false);
+});
+
+function show(msg){
+  const t=document.getElementById("toast");
+  t.innerText=msg;
+  t.style.display="block";
+  setTimeout(()=>t.style.display="none",1800);
+}
+
+function logout(){
+  localStorage.removeItem("admin_login");
+  localStorage.removeItem("adminName");
+  sessionStorage.removeItem("admin_login");
+  sessionStorage.removeItem("adminName");
+  location.href="/admin.html?v=logout";
+}
+
+async function checkAdminStatus(){
+  const name =
+    localStorage.getItem("admin_login") ||
+    localStorage.getItem("adminName") ||
+    sessionStorage.getItem("admin_login") ||
+    sessionStorage.getItem("adminName");
+
+  if(!name) return false;
+
+  try{
+    const r=await fetch("/api/check-account-status/"+encodeURIComponent(name)+"?t="+Date.now());
+    const d=await r.json().catch(()=>({}));
+    const status=String(d.status||"").toLowerCase();
+
+    if(!r.ok || status!=="active"){
+      localStorage.clear();
+      sessionStorage.clear();
+      alert("Akun "+name+" tidak aktif / dikick owner");
+      location.href="/admin.html?v=kick";
+      return false;
+    }
+
+    return true;
+  }catch(e){
+    return true;
+  }
+}
+
+async function load(){
+  if(typing) return;
+
+  const box=document.getElementById("posts");
+
+  try{
+    const r=await fetch("/api/posts?t="+Date.now());
+    const data=await r.json();
+
+    document.getElementById("totalPost").innerText=data.length;
+    document.getElementById("totalComment").innerText=data.reduce((a,p)=>a+(p.comments||[]).length,0);
+    document.getElementById("totalView").innerText=data.reduce((a,p)=>a+Number(p.views||0),0);
+
+    box.innerHTML=data.map(p=>`
+      <div class="item">
+        <img src="${p.thumb||p.thumbnail||''}">
+        <div>
+          <b>${p.title||'-'}</b><br>
+          <span class="badge">👁 ${p.views||0}</span>
+          <span class="badge">💬 ${(p.comments||[]).length}</span>
+          ${p.expiredAt && Date.now()>new Date(p.expiredAt)
+            ? '<span class="badge" style="background:red">Expired</span>'
+            : ''
+          }
+          <br><br>
+          <button onclick="deletePost('${p.id}')">Hapus</button>
+        </div>
+      </div>
+    `).join("") || "Kosong";
+
+  }catch(e){
+    box.innerHTML="Error load";
+  }
+}
+
+function formatTime(sec){
+  sec=Math.max(0,Math.ceil(sec||0));
+  const m=Math.floor(sec/60);
+  const s=sec%60;
+  if(m>0) return `${m} menit ${s} detik`;
+  return `${s} detik`;
+}
+
+function formatSize(bytes){
+  const mb=bytes/1024/1024;
+  return mb.toFixed(2)+" MB";
+}
+
+async function uploadVideos(){
+  const ok=await checkAdminStatus();
+  if(!ok) return;
+
+  const btn=document.getElementById("uploadBtn");
+  const status=document.getElementById("uploadStatus");
+
+  const thumb=upThumb.files[0];
+  const vids=[...upVideos.files];
+
+  if(!thumb) return show("Thumbnail wajib dipilih");
+  if(!vids.length) return show("Video wajib dipilih");
+  if(vids.length>100) return show("Maksimal 100 video sekali upload");
+
+  btn.disabled=true;
+  btn.innerText="Uploading...";
+  status.style.display="block";
+  status.innerText="Menyiapkan upload... jangan keluar.";
+
+  const fd=new FormData();
+
+  fd.append("title",upTitle.value);
+  fd.append("desc",upDesc.value);
+  fd.append("type",upType.value);
+  fd.append("key",upKey.value);
+
+  let expired=upExpired.value;
+  const custom=Number(upExpiredCustom.value||0);
+  const unit=upExpiredUnit.value;
+
+  if(custom>0){
+    if(unit==="minutes") expired=custom/60;
+    if(unit==="hours") expired=custom;
+    if(unit==="days") expired=custom*24;
+  }
+
+  fd.append("expiredHours",expired);
+  fd.append("thumb",thumb);
+  vids.forEach(v=>fd.append("videos",v));
+
+  const xhr=new XMLHttpRequest();
+  const startTime=Date.now();
+
+  xhr.upload.onprogress=function(e){
+    if(e.lengthComputable){
+      const percent=Math.round((e.loaded/e.total)*100);
+      const elapsed=(Date.now()-startTime)/1000;
+      const speed=e.loaded/elapsed;
+      const remaining=(e.total-e.loaded)/speed;
+
+      status.innerText=
+`Mengupload ${percent}%
+${formatSize(e.loaded)} / ${formatSize(e.total)}
+Estimasi selesai: ${formatTime(remaining)}
+Jangan keluar.`;
+    }
+  };
+
+  xhr.onload=function(){
+    btn.disabled=false;
+    btn.innerText="Upload Sekarang";
+
+    let d={};
+    try{ d=JSON.parse(xhr.responseText||"{}"); }catch(e){}
+
+    if(xhr.status>=200 && xhr.status<300){
+      status.innerText="Upload selesai ✅";
+      show("Berhasil upload");
+
+      upTitle.value="";
+      upDesc.value="";
+      upKey.value="";
+      upExpiredCustom.value="";
+      upVideos.value="";
+      upThumb.value="";
+
+      load();
+
+      setTimeout(()=>{
+        status.style.display="none";
+      },2500);
+    }else{
+      status.innerText=d.message || "Upload gagal ❌";
+      show(d.message || "Gagal upload");
+    }
+  };
+
+  xhr.onerror=function(){
+    btn.disabled=false;
+    btn.innerText="Upload Sekarang";
+    status.innerText="Upload gagal / koneksi putus ❌";
+    show("Upload gagal / koneksi putus");
+  };
+
+  xhr.open("POST","/api/admin/upload-final");
+  xhr.setRequestHeader("x-admin-name",adminName);
+  xhr.send(fd);
+}
+
+async function deletePost(id){
+  const ok=await checkAdminStatus();
+  if(!ok) return;
+
+  if(!confirm("Hapus?")) return;
+
+  await fetch("/api/admin/posts/"+id,{
+    method:"DELETE",
+    headers:{"x-admin-name":adminName}
+  });
+
+  load();
+}
+
+load();
+checkAdminStatus();
+
+setInterval(()=>{
+  if(!typing) load();
+},3000);
+
+setInterval(checkAdminStatus,4000);
+</script>
+
+</body>
+</html>

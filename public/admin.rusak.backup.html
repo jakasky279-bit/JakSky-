@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Admin XYRON</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">⚙️ Admin Panel</div>
+</header>
+
+
+<div class="card adminProfileCard">
+  <h2>👑 Admin Profile</h2>
+  <input id="adminProfileName" placeholder="Nama admin, contoh: Admin">
+  <input id="adminProfileKey1" placeholder="Key admin 1">
+  <input id="adminProfileKey2" placeholder="Key admin 2">
+  <select id="adminProfileRole">
+    <option value="owner">Owner 👑</option>
+    <option value="admin">Admin ✔️</option>
+    <option value="moderator">Moderator 🛡️</option>
+  </select>
+  <input id="adminProfileAvatar" type="file" accept="image/*">
+  <button onclick="saveAdminProfile()">Simpan PP Admin</button>
+  <div id="adminProfilesList"></div>
+</div>
+
+<section class="adminBox" id="loginBox">
+  <h2>Login Admin</h2>
+  <input id="key1" placeholder="Kunci admin 1">
+  <input id="key2" placeholder="Kunci admin 2">
+  <button onclick="login()">Masuk</button>
+  <p id="msg"></p>
+</section>
+
+<section class="adminBox hidden" id="panel">
+  <h2>Upload Video</h2>
+
+  <input id="title" placeholder="Judul video">
+  <textarea id="desc" placeholder="Deskripsi"></textarea>
+  <label>Tipe Video:</label>
+  <select id="isVip">
+    <option value="false">Public / Gratis</option>
+    <option value="true">VIP / Pakai Kunci</option>
+  </select>
+
+  <input id="videoKey" placeholder="Kunci VIP, contoh: vip123">
+
+  <label>Expired sampai:</label>
+  <input id="expiredAt" type="datetime-local">
+
+  <label>Thumbnail:</label>
+  <input id="thumb" type="file" accept="image/*">
+
+  <label>Video:</label>
+  <input id="videoFile" type="file" accept="video/*" multiple>
+
+  <button id="uploadBtn" onclick="uploadPost()">Upload Sekarang</button>
+  <p id="status"></p>
+</section>
+
+<section class="adminBox hidden" id="historyBox">
+  <h2>History Upload</h2>
+  <div id="adminStats"></div>
+  <div id="history">Memuat history...</div>
+</section>
+
+<script>
+let KEY1 = "";
+let KEY2 = "";
+
+async function login(){
+  KEY1 = document.getElementById("key1").value.trim();
+  KEY2 = document.getElementById("key2").value.trim();
+
+  const res = await fetch("/api/admin/login",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({key1:KEY1,key2:KEY2})
+  });
+
+  const data = await res.json();
+
+  if(data.ok){
+    document.getElementById("loginBox").classList.add("hidden");
+    document.getElementById("panel").classList.remove("hidden");
+    document.getElementById("historyBox").classList.remove("hidden");
+    loadHistory();
+  }else{
+    document.getElementById("msg").innerText = "Kunci salah!";
+  }
+}
+
+
+async function uploadPost(){
+  const title = document.getElementById("title");
+  const desc = document.getElementById("desc");
+  const videoKey = document.getElementById("videoKey");
+  const expiredAt = document.getElementById("expiredAt");
+  const thumb = document.getElementById("thumb");
+  const videoFile = document.getElementById("videoFile");
+  const status = document.getElementById("status");
+  const uploadBtn = document.getElementById("uploadBtn");
+
+  if(!thumb.files[0]) return status.innerText = "Thumbnail belum dipilih!";
+  if(!videoFile.files[0]) return status.innerText = "Video belum dipilih!";
+  if(videoFile.files.length > 9) return status.innerText = "Maksimal 9 video!";
+
+  const fd = new FormData();
+  fd.append("title", title.value);
+  fd.append("desc", desc.value);
+  fd.append("isVip", document.getElementById("isVip").value);
+  fd.append("videoKey", videoKey.value);
+  fd.append("expiredAt", expiredAt.value);
+
+  // ✅ thumbnail 1
+  fd.append("thumb", thumb.files[0]);
+
+  // ✅ MULTI VIDEO (INI YANG FIX)
+  for(let i=0;i<videoFile.files.length;i++){
+    fd.append("video", videoFile.files[i]);
+  }
+
+  uploadBtn.disabled = true;
+  uploadBtn.innerText = "Uploading...";
+  status.innerText = "Upload "+videoFile.files.length+" video... tunggu...";
+
+  try{
+    const res = await fetch("/api/admin/upload",{
+      method:"POST",
+      headers:{
+        "x-key-1":KEY1,
+        "x-key-2":KEY2
+      },
+      body:fd
+    });
+
+    const data = await res.json();
+
+    if(res.ok){
+    try{
+      const info = await res.clone().json();
+      if(info.adminRole) localStorage.setItem("adminRole", info.adminRole);
+      if(info.adminName) localStorage.setItem("adminName", info.adminName);
+    }catch(e){}
+      status.innerText = "Berhasil upload 1 postingan isi "+videoFile.files.length+" video!";
+      title.value = "";
+      desc.value = "";
+      videoKey.value = "";
+      expiredAt.value = "";
+      thumb.value = "";
+      videoFile.value = "";
+      loadHistory();
+    }else{
+      status.innerText = data.message || "Gagal upload!";
+    }
+
+  }catch(e){
+    status.innerText = "Upload error!";
+  }
+
+  uploadBtn.disabled = false;
+  uploadBtn.innerText = "Upload Sekarang";
+}
+
+
+async function loadHistory(){
+  const history = document.getElementById("history");
+  const adminStats = document.getElementById("adminStats");
+
+  history.innerHTML = "Memuat history...";
+
+  try{
+    const res = await fetch("/api/admin/posts?ts=" + Date.now(),{
+      headers:{
+        "x-key-1":KEY1 || "xyron",
+        "x-key-2":KEY2 || "store123"
+      }
+    });
+
+    const posts = await res.json();
+
+    if(!Array.isArray(posts) || posts.length === 0){
+      adminStats.innerHTML = "";
+      history.innerHTML = "Belum ada upload.";
+      return;
+    }
+
+    const totalViews = posts.reduce((a,p)=>a+(p.views || 0),0);
+
+    adminStats.innerHTML = `
+      <div class="statBox">
+        <span>📦 Total Video: ${posts.length}</span>
+        <span>👁 Total View: ${totalViews}</span>
+      </div>
+    `;
+
+    history.innerHTML = posts.map(p=>`
+      <div class="historyItem">
+        <img src="${p.thumb}">
+        <div>
+          <b>${p.title}</b>
+          <small>Kunci: ${p.videoKey || "Tidak dikunci"}</small>
+          <small>👁 ${p.views || 0} · 👍 ${p.likes || 0} · 👎 ${p.unlikes || 0} · 💬 ${(p.comments || []).length}</small>
+          <button class="deleteBtn" onclick="deletePost('${p.id}')">Delete Video</button>
+
+          <div class="adminComments">
+            ${(p.comments || []).map(c=>`
+              <div class="adminComment">
+                <span>
+<div class="commentHeader">
+  ${renderAvatar(c)}
+  <b>${c.name}</b>
+  ${c.isAdmin ? `<span class="adminBadge">ADMIN</span><span class="verifiedBadge">✓</span>
+      <span class="roleBadge role_${a.role || 'admin'}">${a.role === 'owner' ? '👑 OWNER' : a.role === 'moderator' ? '🛡️ MOD' : '✔️ ADMIN'}</span>` : ""}
+</div>
+: ${c.text}</span>
+
+                <div class="replyList">
+                  ${(c.replies || []).map(r=>`
+                    <div class="replyItem">
+                      <b>${r.name}</b>
+                      ${r.isAdmin ? `<span class="adminBadge">ADMIN</span>` : ""}
+                      <p>${r.text}</p>
+                    </div>
+                  `).join("")}
+                </div>
+
+                <div class="adminReplyBox">
+                  <input id="admin_reply_${p.id}_${c.id}" placeholder="Balas sebagai admin...">
+                  <button onclick="adminReplyComment('${p.id}','${c.id}')">Balas</button>
+                </div>
+
+                <button class="miniDelete" onclick="deleteAdminComment('${p.id}','${c.id}')">Hapus</button>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      </div>
+    `).join("");
+
+  }catch(e){
+    history.innerHTML = "Gagal ambil history.";
+  }
+}
+
+async function deletePost(id){
+  if(!confirm("Hapus video ini?")) return;
+
+  await fetch("/api/admin/posts/"+id,{
+    method:"DELETE",
+    headers:{
+      "x-key-1":KEY1 || "xyron",
+      "x-key-2":KEY2 || "store123"
+    }
+  });
+
+  loadHistory();
+}
+
+async function deleteAdminComment(postId,commentId){
+  await fetch(`/api/admin/posts/${postId}/comments/${commentId}`,{
+    method:"DELETE",
+    headers:{
+      "x-key-1":KEY1 || "xyron",
+      "x-key-2":KEY2 || "store123"
+    }
+  });
+
+  loadHistory();
+}
+
+async function adminReplyComment(postId,commentId){
+  const inp = document.getElementById("admin_reply_"+postId+"_"+commentId);
+  if(!inp || !inp.value.trim()) return;
+
+  await fetch(`/api/admin/posts/${postId}/comments/${commentId}/reply`,{
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      "x-key-1":KEY1 || "xyron",
+      "x-key-2":KEY2 || "store123"
+    },
+    body:JSON.stringify({text:inp.value, adminName:localStorage.getItem("adminName") || "Admin"})
+  });
+
+  loadHistory();
+}
+</script>
+
+
+<script>
+async function loadHistory(){
+  const history = document.getElementById("history");
+  const adminStats = document.getElementById("adminStats");
+  if(!history) return;
+
+  history.innerHTML = "Memuat history...";
+
+  const res = await fetch("/api/admin/posts?ts="+Date.now());
+  const posts = await res.json();
+
+  const totalViews = posts.reduce((a,p)=>a+(Number(p.views||0)),0);
+
+  if(adminStats){
+    adminStats.innerHTML = `
+      <div class="statBox">
+        <span>📦 Total Video: ${posts.length}</span>
+        <span>👁 Total View: ${totalViews}</span>
+      </div>
+    `;
+  }
+
+  if(!posts.length){
+    history.innerHTML = "Belum ada upload.";
+    return;
+  }
+
+  history.innerHTML = posts.map(p=>`
+    <div class="historyItem">
+      <img src="${p.thumb||''}">
+      <div>
+        <b>${p.title||'Tanpa Judul'}</b>
+        <small>Kunci: ${p.videoKey || "Tidak dikunci"}</small>
+        <small>👁 ${p.views||0} · 👍 ${p.likes||0} · 👎 ${p.unlikes||0} · 💬 ${(p.comments||[]).length}</small>
+        <button class="deleteBtn" onclick="deletePost('${p.id}')">Delete Video</button>
+
+        <div class="adminComments">
+          ${(p.comments||[]).map((c,i)=>`
+            <div class="adminCommentBox">
+              <div>
+                <b>${c.name||"User"}</b>
+                ${c.isAdmin?`<span class="adminBadge">ADMIN</span>`:""}
+                <button class="miniDelete" onclick="deleteAdminComment('${p.id}',${i})">Hapus Komentar</button>
+              </div>
+              <p>${c.text||""}</p>
+
+              ${(c.replies||[]).map(r=>`
+                <div class="adminReplyBox">
+                  <b>${r.name||"User"}</b>
+                  ${r.isAdmin?`<span class="adminBadge">ADMIN</span>`:""}
+                  <p>${r.text||""}</p>
+                </div>
+              `).join("")}
+
+              <div class="replyAdminBox">
+                <input id="adminReply_${p.id}_${i}" placeholder="Balas sebagai admin...">
+                <button onclick="replyAdminComment('${p.id}',${i})">Balas</button>
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      </div>
+    </div>
+  `).join("");
+}
+
+async function deleteAdminComment(postId,i){
+  if(!confirm("Hapus komentar ini?")) return;
+
+  const res = await fetch(`/api/admin/delete-comment/${postId}/${i}`,{
+    method:"DELETE"
+  });
+
+  if(res.ok){
+    loadHistory();
+  }else{
+    alert("Gagal hapus komentar");
+  }
+}
+
+async function replyAdminComment(postId,i){
+  const inp = document.getElementById(`adminReply_${postId}_${i}`);
+  if(!inp || !inp.value.trim()) return;
+
+  const res = await fetch(`/api/admin/posts/${postId}/comments/${i}/reply`,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({text:inp.value, adminName:localStorage.getItem("adminName") || "Admin"})
+  });
+
+  if(res.ok){
+    inp.value="";
+    loadHistory();
+  }else{
+    alert("Gagal balas komentar");
+  }
+}
+
+setTimeout(loadHistory,300);
+</script>
+
+
+<script>
+function renderAvatar(c){
+  if(c.avatar){
+    return `<img src="${c.avatar}" class="avatar">`
+  }
+  return `<div class="avatarFallback">${c.name ? c.name[0].toUpperCase() : "U"}</div>`
+}
+</script>
+
+
+<script>
+function fixAdminProfilePosition(){
+  const cards = document.querySelectorAll(".adminProfileCard");
+  if(!cards.length) return;
+
+  const uploadTitle = [...document.querySelectorAll("h2")].find(x=>x.textContent.includes("Upload Video"));
+  const loginTitle = [...document.querySelectorAll("h2")].find(x=>x.textContent.includes("Login Admin"));
+
+  const uploadCard = uploadTitle ? uploadTitle.closest(".card") || uploadTitle.parentElement : null;
+  const loginCard = loginTitle ? loginTitle.closest(".card") || loginTitle.parentElement : null;
+
+  const loginVisible = loginCard && loginCard.offsetParent !== null;
+  const uploadVisible = uploadCard && uploadCard.offsetParent !== null;
+
+  cards.forEach(card=>{
+    if(uploadVisible && !loginVisible){
+      card.style.display = "block";
+      if(uploadCard && card.previousElementSibling !== uploadCard){
+        uploadCard.parentNode.insertBefore(card, uploadCard.nextSibling);
+      }
+    }else{
+      card.style.display = "none";
+    }
+  });
+}
+
+setInterval(fixAdminProfilePosition,500);
+setTimeout(fixAdminProfilePosition,500);
+</script>
+
+
+<script>
+function forceAdminProfile(){
+  const text = document.body.innerText || "";
+  const sudahLogin = text.includes("Upload Video") && text.includes("History Upload");
+
+  if(sudahLogin){
+    document.body.classList.add("adminLoggedIn");
+  }else{
+    document.body.classList.remove("adminLoggedIn");
+  }
+}
+setInterval(forceAdminProfile,300);
+setTimeout(forceAdminProfile,300);
+</script>
+
+
+<script id="forceAdminPP">
+function forceAdminPP(){
+  document.querySelectorAll(".adminReplyBox,.adminCommentBox,.reply,.comment").forEach(box=>{
+    if(!box.innerText.includes("Admin")) return;
+    if(box.querySelector(".adminRealPP")) return;
+
+    const img=document.createElement("img");
+    img.src="/uploads/admin.png?v="+Date.now();
+    img.className="adminRealPP";
+
+    const first=box.firstElementChild;
+    if(first){
+      first.prepend(img);
+    }else{
+      box.prepend(img);
+    }
+  });
+}
+setInterval(forceAdminPP,500);
+setTimeout(forceAdminPP,300);
+</script>
+
+
+<script id="roleBadgeRender">
+function roleBadge(role){
+  role = role || "admin";
+  if(role === "owner") return `<span class="roleBadge role_owner">👑 OWNER</span>`;
+  if(role === "moderator") return `<span class="roleBadge role_moderator">🛡️ MOD</span>`;
+  return `<span class="roleBadge role_admin">✔️ ADMIN</span>`;
+}
+setInterval(()=>{
+  document.querySelectorAll(".adminBadge").forEach(b=>{
+    const box=b.closest(".comment,.reply,.adminCommentBox,.adminReplyBox");
+    if(box && !box.querySelector(".roleBadge")){
+      b.insertAdjacentHTML("afterend", `<span class="roleBadge role_admin">✔️ ADMIN</span>`);
+    }
+  });
+},700);
+</script>
+
+
+<div id="ownerPanel" class="adminBox hidden">
+  <h2>👑 Kelola Admin</h2>
+  <input id="newAdminName" placeholder="Nama admin">
+  <input id="newAdminKey1" placeholder="Key 1">
+  <input id="newAdminKey2" placeholder="Key 2">
+  <select id="newAdminRole">
+    <option value="admin">✔️ Admin</option>
+    <option value="moderator">🛡️ Moderator</option>
+  </select>
+  <button onclick="saveNewAdmin()">Simpan Admin</button>
+  <div id="adminList"></div>
+</div>
+
+
+<script id="ownerRoleSystem">
+let CURRENT_ROLE = localStorage.getItem("adminRole") || "";
+
+function applyRoleUI(){
+  const role = localStorage.getItem("adminRole") || CURRENT_ROLE;
+
+  const ownerPanel = document.getElementById("ownerPanel");
+  if(ownerPanel){
+    ownerPanel.classList.toggle("hidden", role !== "owner");
+  }
+
+  const uploadBox = [...document.querySelectorAll("h2")]
+    .find(x=>x.textContent.includes("Upload Video"))?.parentElement;
+
+  if(uploadBox){
+    uploadBox.style.display = role === "moderator" ? "none" : "";
+  }
+
+  document.querySelectorAll(".deleteBtn").forEach(btn=>{
+    btn.style.display = role === "moderator" ? "none" : "";
+  });
+
+  if(role === "owner") loadOwnerAdmins();
+}
+
+async function loadOwnerAdmins(){
+  const box=document.getElementById("adminList");
+  if(!box) return;
+
+  const res=await fetch("/api/owner/admins?ts="+Date.now());
+  const admins=await res.json();
+
+  box.innerHTML=admins.map(a=>`
+    <div class="adminMiniProfile">
+      <img src="${a.avatar || '/uploads/admin.png'}?v=${Date.now()}">
+      <b>${a.name}</b>
+      <span class="roleBadge role_${a.role}">${a.role==="owner"?"👑 OWNER":a.role==="moderator"?"🛡️ MOD":"✔️ ADMIN"}</span>
+      ${a.role!=="owner"?`<button class="miniDelete" onclick="deleteAdminRole('${a.name}')">Hapus</button>`:""}
+    </div>
+  `).join("");
+}
+
+async function saveNewAdmin(){
+  const body={
+    name:newAdminName.value,
+    key1:newAdminKey1.value,
+    key2:newAdminKey2.value,
+    role:newAdminRole.value
+  };
+
+  const res=await fetch("/api/owner/admins",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(body)
+  });
+
+  if(res.ok){
+    newAdminName.value="";
+    newAdminKey1.value="";
+    newAdminKey2.value="";
+    loadOwnerAdmins();
+    alert("Admin tersimpan");
+  }else{
+    alert("Gagal simpan admin");
+  }
+}
+
+async function deleteAdminRole(name){
+  if(!confirm("Hapus admin ini?")) return;
+  await fetch("/api/owner/admins/"+encodeURIComponent(name),{method:"DELETE"});
+  loadOwnerAdmins();
+}
+
+setInterval(applyRoleUI,800);
+setTimeout(applyRoleUI,800);
+</script>
+
+
+
+
+
+<script id="ADMIN_LOGIN_FINAL_FIX">
+(function(){
+  async function finalAdminLogin(){
+    const inputs = [...document.querySelectorAll("input")];
+    const key1 = (inputs[0]?.value || "").trim();
+    const key2 = (inputs[1]?.value || "").trim();
+
+    const res = await fetch("/api/role-login",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({key1,key2,role:"admin"})
+    });
+
+    const data = await res.json().catch(()=>({}));
+
+    if(!res.ok){
+      alert(data.message || "Login salah");
+      return;
+    }
+
+    localStorage.setItem("adminName", data.adminName || data.admin?.name || "Admin");
+    localStorage.setItem("adminRole", "admin");
+
+    document.querySelectorAll("section,.adminBox").forEach(el=>{
+      if(el.innerText && el.innerText.toLowerCase().includes("login admin")){
+        el.style.display="none";
+      }else{
+        el.style.display="";
+      }
+    });
+
+    if(typeof loadPosts === "function") loadPosts();
+    if(typeof loadHistory === "function") loadHistory();
+    if(typeof renderAdmin === "function") renderAdmin();
+
+    alert("Login admin berhasil");
+  }
+
+  window.loginAdmin = finalAdminLogin;
+  window.login = finalAdminLogin;
+
+  setInterval(()=>{
+    document.querySelectorAll("button").forEach(btn=>{
+      if((btn.innerText || "").toLowerCase().includes("masuk")){
+        btn.onclick = finalAdminLogin;
+        btn.type = "button";
+      }
+    });
+  },500);
+})();
+</script>
+
+
+<script id="FORCE_ADMIN_LOGIN_FINAL">
+(function(){
+  async function masukAdminFix(e){
+    if(e){
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+    }
+
+    const inputs=[...document.querySelectorAll("input")];
+    const key1=(inputs[0]?.value||"").trim();
+    const key2=(inputs[1]?.value||"").trim();
+
+    const res=await fetch("/api/admin-login-final",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({key1,key2})
+    });
+
+    const data=await res.json().catch(()=>({}));
+
+    if(!res.ok){
+      alert(data.message || "Login salah");
+      return false;
+    }
+
+    localStorage.setItem("adminName",data.adminName||"Admin");
+    localStorage.setItem("adminRole","admin");
+
+    document.querySelectorAll("section,.adminBox").forEach(el=>{
+      if((el.innerText||"").toLowerCase().includes("login admin")){
+        el.style.display="none";
+      }else{
+        el.style.display="";
+      }
+    });
+
+    if(typeof loadPosts==="function") loadPosts();
+    if(typeof loadHistory==="function") loadHistory();
+    if(typeof renderAdmin==="function") renderAdmin();
+
+    alert("Login admin berhasil");
+    return false;
+  }
+
+  window.loginAdmin=masukAdminFix;
+  window.login=masukAdminFix;
+
+  document.addEventListener("submit",masukAdminFix,true);
+  document.addEventListener("click",function(e){
+    const t=e.target;
+    if(t && (t.innerText||"").toLowerCase().includes("masuk")){
+      masukAdminFix(e);
+    }
+  },true);
+})();
+</script>
+
+</body>
+</html>

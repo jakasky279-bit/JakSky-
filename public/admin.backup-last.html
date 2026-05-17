@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Admin Panel</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.hidden{display:none!important}
+.wrap{max-width:720px;margin:30px auto;padding:0 15px}
+.card{background:white;border-radius:22px;padding:25px;margin:20px 0;box-shadow:0 15px 35px #ff4fa344}
+input,textarea,select{width:100%;padding:13px;margin:8px 0 14px;border:1px solid #f5b6d2;border-radius:14px}
+button{background:#ff3f9d;color:white;border:0;border-radius:14px;padding:12px 18px;font-weight:bold}
+.item{display:flex;gap:12px;background:#fff5fb;border-radius:18px;padding:12px;margin:12px 0}
+.item img{width:90px;height:90px;object-fit:cover;border-radius:15px}
+</style>
+</head>
+<body>
+<header class="topbar"><div class="brand">⚙️ Admin Panel</div></header>
+
+<div class="wrap">
+<section class="card" id="loginBox">
+<h2>Login Admin</h2>
+<input id="key1" placeholder="Username">
+<input id="key2" placeholder="Password">
+<button onclick="loginAdmin()">Masuk</button>
+</section>
+
+<section class="card hidden" id="uploadBox">
+<h2>Upload Video</h2>
+<input id="title" placeholder="Judul video">
+<textarea id="desc" placeholder="Deskripsi"></textarea>
+<select id="type">
+<option value="public">Public / Gratis</option>
+<option value="vip">VIP</option>
+</select>
+<input id="vipKey" placeholder="Kunci VIP">
+<label>Thumbnail:</label>
+<input id="thumb" type="file" accept="image/*">
+<label>Video:</label>
+<input id="video" type="file" accept="video/*">
+<button onclick="uploadVideo()">Upload Sekarang</button>
+</section>
+
+<section class="card hidden" id="historyBox">
+<h2>History Upload</h2>
+<div id="history"></div>
+</section>
+</div>
+
+<script>
+async function loginAdmin(){
+  const res=await fetch("/api/admin-login-pasti",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      key1:document.getElementById("key1").value.trim(),
+      key2:document.getElementById("key2").value.trim()
+    })
+  });
+
+  const data=await res.json().catch(()=>({}));
+
+  if(!res.ok){
+    alert(data.message || "Login salah");
+    return;
+  }
+
+  loginBox.classList.add("hidden");
+  uploadBox.classList.remove("hidden");
+  historyBox.classList.remove("hidden");
+  loadHistory();
+}
+
+async function uploadVideo(){
+  const fd=new FormData();
+  fd.append("title",title.value);
+  fd.append("desc",desc.value);
+  fd.append("type",type.value);
+  fd.append("key",vipKey.value);
+  if(thumb.files[0]) fd.append("thumbnail",thumb.files[0]);
+  if(video.files[0]) fd.append("video",video.files[0]);
+
+  const res=await fetch("/api/upload",{method:"POST",body:fd});
+  if(res.ok){
+    alert("Upload berhasil");
+    title.value="";desc.value="";vipKey.value="";thumb.value="";video.value="";
+    loadHistory();
+  }else alert("Upload gagal");
+}
+
+
+
+async function loadHistory(){
+  const res=await fetch("/api/posts?ts="+Date.now());
+  const posts=await res.json().catch(()=>[]);
+
+  if(!posts.length){
+    history.innerHTML="<p>Tidak ada video</p>";
+    return;
+  }
+
+  history.innerHTML=posts.map(p=>`
+    <div class="item">
+      <img src="${p.thumb||p.thumbnail||''}">
+      <div>
+        <b>${p.title||'Tanpa judul'}</b><br>
+        <small>👁 ${p.views||0} · 👍 ${p.likes||0} · 💬 ${(p.comments||[]).length} · ⬇️ ${p.downloads||0}</small><br><br>
+
+        <button onclick="deleteVideo('${p.id}')">Delete Video</button>
+
+        <div class="adminComments">
+          <b>Komentar:</b>
+          ${
+            (p.comments||[]).length
+            ? (p.comments||[]).map((c,i)=>`
+              <div class="adminCommentBox">
+                <b>${c.name || 'User'}</b>
+                <p>${c.text || ''}</p>
+                <button onclick="deleteComment('${p.id}',${i})">Hapus Komentar</button>
+              </div>
+            `).join("")
+            : "<p>Belum ada komentar</p>"
+          }
+        </div>
+      </div>
+    </div>
+  `).join("");
+}
+
+async function deleteComment(postId,i){
+  if(!confirm("Hapus komentar ini?")) return;
+
+  const res=await fetch("/api/admin/delete-comment/"+postId+"/"+i,{
+    method:"DELETE"
+  });
+
+  if(res.ok){
+    loadHistory();
+  }else{
+    alert("Gagal hapus komentar");
+  }
+}
+
+
+
+async function deleteVideo(id){
+  if(!confirm("Hapus video ini?")) return;
+  await fetch("/api/admin/posts/"+id,{method:"DELETE"});
+  loadHistory();
+}
+</script>
+</body>
+</html>
