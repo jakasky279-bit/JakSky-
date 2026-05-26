@@ -347,6 +347,73 @@ app.delete("/api/owner/accounts/:id", (req, res) => {
   res.json({ ok: true, accounts: next });
 });
 
+
+
+// ===== OWNER V2 API UNTUK owner.html =====
+app.get("/api/owner-v2/accounts", (req, res) => {
+  res.json(readAdmins());
+});
+
+app.post("/api/owner-v2/accounts", (req, res) => {
+  const { name, key1, key2, role, status } = req.body || {};
+
+  if (!name || !key1 || !key2 || !role) {
+    return res.status(400).json({ message: "Data belum lengkap" });
+  }
+
+  const admins = readAdmins();
+
+  if (admins.find((a) => String(a.name).toLowerCase() === String(name).toLowerCase())) {
+    return res.status(400).json({ message: "Nama akun sudah ada" });
+  }
+
+  const acc = {
+    id: makeId(),
+    name,
+    key1,
+    key2,
+    role,
+    status: status || "active",
+    createdAt: new Date().toISOString()
+  };
+
+  admins.push(acc);
+  writeAdmins(admins);
+
+  res.json({ ok: true, account: acc, accounts: admins });
+});
+
+app.patch("/api/owner-v2/accounts/:name/status", (req, res) => {
+  const admins = readAdmins();
+  const target = decodeURIComponent(req.params.name).toLowerCase();
+
+  const next = admins.map((a) => {
+    if (String(a.name).toLowerCase() !== target) return a;
+    if (a.role === "owner") return a;
+
+    return {
+      ...a,
+      status: req.body.status || a.status
+    };
+  });
+
+  writeAdmins(next);
+  res.json({ ok: true, accounts: next });
+});
+
+app.delete("/api/owner-v2/accounts/:name", (req, res) => {
+  const target = decodeURIComponent(req.params.name).toLowerCase();
+
+  const next = readAdmins().filter((a) => {
+    if (a.role === "owner") return true;
+    return String(a.name).toLowerCase() !== target;
+  });
+
+  writeAdmins(next);
+  res.json({ ok: true, accounts: next });
+});
+
+
 app.get(/.*/, (req, res) => {
   if (req.path.startsWith("/api")) {
     return res.status(404).json({ message: "API tidak ditemukan" });
