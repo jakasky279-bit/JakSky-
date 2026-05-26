@@ -265,28 +265,7 @@ app.delete("/api/admin/delete-comment/:postId/:commentIndex", (req, res) => {
   res.json(post);
 });
 
-app.post("/api/role-login", (req, res) => {
-  const { key1, key2, role } = req.body || {};
-  const admins = readAdmins();
 
-  const admin = admins.find((a) => {
-    const okKey = a.key1 === key1 && a.key2 === key2;
-    const okRole = !role || a.role === role;
-    const okStatus = !a.status || a.status === "active";
-    return okKey && okRole && okStatus;
-  });
-
-  if (!admin) {
-    return res.status(401).json({ message: "Login salah atau akun belum aktif" });
-  }
-
-  res.json({
-    ok: true,
-    admin,
-    adminRole: admin.role,
-    adminName: admin.name
-  });
-});
 
 app.get("/api/owner/accounts", (req, res) => {
   res.json(readAdmins());
@@ -411,6 +390,61 @@ app.delete("/api/owner-v2/accounts/:name", (req, res) => {
 
   writeAdmins(next);
   res.json({ ok: true, accounts: next });
+});
+
+
+
+
+// ===== ROLE_LOGIN_ACCEPT_NAME_KEY_FIX =====
+app.post("/api/role-login", (req, res) => {
+  const body = req.body || {};
+
+  const reqRole = String(body.role || body.adminRole || "").trim().toLowerCase();
+  const reqName = String(body.name || body.username || body.user || body.account || "").trim().toLowerCase();
+  const reqKey1 = String(body.key1 || body.username || body.user || "").trim();
+  const reqKey2 = String(body.key2 || body.password || body.pass || "").trim();
+
+  const admins = readAdmins();
+
+  const matchByLogin = (a) => {
+    const role = String(a.role || "").trim().toLowerCase();
+    const status = String(a.status || "active").trim().toLowerCase();
+
+    const name = String(a.name || a.username || "").trim().toLowerCase();
+    const key1 = String(a.key1 || a.username || "").trim();
+    const key2 = String(a.key2 || a.password || "").trim();
+
+    const roleOk = !reqRole || role === reqRole;
+    const keyOk = key1 === reqKey1 && key2 === reqKey2;
+    const nameOk = reqName && name === reqName && key2 === reqKey2;
+
+    return roleOk && (keyOk || nameOk);
+  };
+
+  const foundAny = admins.find(matchByLogin);
+
+  if (!foundAny) {
+    return res.status(401).json({
+      ok: false,
+      message: "Nama akun / Key 1 / Key 2 / Role salah"
+    });
+  }
+
+  const status = String(foundAny.status || "active").trim().toLowerCase();
+
+  if (status !== "active" && status !== "aktif") {
+    return res.status(403).json({
+      ok: false,
+      message: "Akun belum aktif. Aktifkan dulu dari Owner Panel."
+    });
+  }
+
+  res.json({
+    ok: true,
+    admin: foundAny,
+    adminRole: foundAny.role,
+    adminName: foundAny.name || foundAny.username
+  });
 });
 
 
