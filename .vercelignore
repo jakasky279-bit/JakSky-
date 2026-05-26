@@ -1,0 +1,10 @@
+public/uploads/videos/**
+public/uploads/thumbs/**
+uploads/**
+*.backup.js
+server.rusak.backup.js
+server.backup-safe.js
+server.backup-crash-fix.js
+fix-vercel-safe.js
+fix-vercel-safe.cjs
+node_modules/**

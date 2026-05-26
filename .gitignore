@@ -1,0 +1,12 @@
+node_modules/
+.env
+.vercel/
+uploads/
+public/uploads/videos/
+public/uploads/thumbs/
+*.backup.js
+server.rusak.backup.js
+server.backup-safe.js
+server.backup-crash-fix.js
+fix-vercel-safe.js
+fix-vercel-safe.cjs
