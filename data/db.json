@@ -1,0 +1,106 @@
+{
+  "media": [
+    {
+      "id": "7b31a801038f7256e4",
+      "title": "Test",
+      "desc": "",
+      "vip": true,
+      "password": "",
+      "expiresAt": null,
+      "filename": "1779685450314-e6d9cd67284c6d8eb8.mp4",
+      "thumbnail": "1779685450279-77730d90b1a0af73a9.jpg",
+      "original": "(-_-).mp4",
+      "size": 1896429,
+      "mime": "video/mp4",
+      "createdAt": "2026-05-25T05:04:10.347Z",
+      "likes": [
+        "v_7825c7657d3fc1fbfc",
+        "v_a6062af8ed915d9160"
+      ],
+      "unlikes": [
+        "v_45df59ba351bdb863c"
+      ],
+      "ratings": [
+        {
+          "visitor": "v_7825c7657d3fc1fbfc",
+          "value": 5,
+          "createdAt": "2026-05-25T05:09:54.056Z"
+        }
+      ],
+      "comments": [
+        {
+          "id": "f5c60f335e1d853664",
+          "name": "JakSky",
+          "text": "Hii",
+          "createdAt": "2026-05-25T05:41:01.755Z",
+          "replies": [
+            {
+              "id": "37b0e27b5332334954",
+              "by": "MODERATOR",
+              "badge": "MODERATOR BADGE",
+              "text": "Hi juga",
+              "createdAt": "2026-05-25T05:42:21.553Z"
+            }
+          ]
+        },
+        {
+          "id": "31b0f09e270c22f772",
+          "name": "ImSky2",
+          "text": "Hii",
+          "createdAt": "2026-05-25T10:07:55.772Z",
+          "replies": []
+        }
+      ]
+    },
+    {
+      "id": "a35d2020d9e6e5311b",
+      "title": "Test",
+      "desc": "",
+      "vip": false,
+      "password": "",
+      "expiresAt": null,
+      "filename": "1779703714345-dac3a6c786636fee6f.mp4",
+      "thumbnail": "1779703714319-90017229ac635dcb23.jpg",
+      "original": "1_4987991682600404137.mp4",
+      "size": 2305780,
+      "mime": "video/mp4",
+      "createdAt": "2026-05-25T10:08:34.396Z",
+      "likes": [],
+      "unlikes": [],
+      "ratings": [],
+      "comments": []
+    }
+  ],
+  "accounts": [
+    {
+      "id": "owner-jaksky",
+      "role": "owner",
+      "user": "JakSky",
+      "pass": "JakSky",
+      "key1": "",
+      "key2": "",
+      "status": "active",
+      "createdAt": "2026-05-25T04:48:55.785Z"
+    },
+    {
+      "id": "a04f11dcd17ecb95ec",
+      "role": "admin",
+      "user": "JakSky",
+      "pass": "JakSky",
+      "key1": "",
+      "key2": "",
+      "status": "active",
+      "createdAt": "2026-05-25T04:53:10.803Z"
+    },
+    {
+      "id": "cbd5fbb454ac1b8085",
+      "role": "moderator",
+      "user": "JakSky",
+      "pass": "JakSky",
+      "key1": "",
+      "key2": "",
+      "status": "active",
+      "createdAt": "2026-05-25T05:42:04.462Z"
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+<svg width="800" height="800" viewBox="0 0 800 800" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="45%" stop-color="#ffe1f1"/>
+      <stop offset="100%" stop-color="#ffd0e8"/>
+    </linearGradient>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="15" stdDeviation="18" flood-color="#ff4da6" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+
+  <rect width="800" height="800" rx="55" fill="url(#bg)"/>
+
+  <circle cx="400" cy="375" r="210" fill="#d7e8ff" filter="url(#shadow)"/>
+  <path d="M230 350 C220 230 300 145 400 145 C500 145 580 230 570 350 C620 380 635 470 570 535 C520 610 285 610 230 535 C165 470 180 380 230 350Z" fill="#6d88aa"/>
+  <path d="M250 235 L300 115 L350 245Z" fill="#6d88aa"/>
+  <path d="M550 235 L500 115 L450 245Z" fill="#6d88aa"/>
+  <path d="M285 245 C355 185 455 175 520 245 C465 225 345 225 285 245Z" fill="#8aa2c2"/>
+
+  <circle cx="330" cy="390" r="38" fill="#ffffff"/>
+  <circle cx="470" cy="390" r="38" fill="#ffffff"/>
+  <circle cx="333" cy="395" r="20" fill="#425a78"/>
+  <circle cx="467" cy="395" r="20" fill="#425a78"/>
+  <circle cx="323" cy="384" r="7" fill="#ffffff"/>
+  <circle cx="457" cy="384" r="7" fill="#ffffff"/>
+
+  <path d="M385 450 Q400 465 415 450" stroke="#404040" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <ellipse cx="280" cy="445" rx="33" ry="17" fill="#ffabc9" opacity="0.65"/>
+  <ellipse cx="520" cy="445" rx="33" ry="17" fill="#ffabc9" opacity="0.65"/>
+
+  <path d="M285 570 C300 505 500 505 515 570 L540 715 H260Z" fill="#ffffff"/>
+  <path d="M325 575 Q400 620 475 575" stroke="#e5e5e5" stroke-width="12" fill="none" stroke-linecap="round"/>
+
+  <circle cx="585" cy="185" r="35" fill="#ffffff" opacity="0.8"/>
+  <text x="585" y="197" text-anchor="middle" font-size="34">✨</text>
+
+  <text x="400" y="760" text-anchor="middle" font-family="Arial" font-size="46" font-weight="900" fill="#8d35ff">JakSky Video</text>
+</svg>
