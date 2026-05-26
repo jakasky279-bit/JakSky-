@@ -5219,9 +5219,7 @@ app.use((err, req, res, next) => {
 });
 
 
-
-
-// ===== VERCEL_SAFE_FINAL =====
+// ===== VERCEL_FINAL_EXPORT =====
 app.get(/.*/, (req, res) => {
   if (req.path.startsWith("/api")) {
     return res.status(404).json({ message: "API tidak ditemukan" });
@@ -5229,7 +5227,7 @@ app.get(/.*/, (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-if (!process.env.VERCEL) {
+if (require.main === module) {
   app.listen(PORT, "0.0.0.0", () => {
     console.log("Web aktif di http://localhost:" + PORT);
   });
