@@ -396,55 +396,135 @@ app.delete("/api/owner-v2/accounts/:name", (req, res) => {
 
 
 // ===== ROLE_LOGIN_ACCEPT_NAME_KEY_FIX =====
+
+
+
+
+
+// ===== FIX LOGIN ROLE SUPER FLEXIBLE =====
 app.post("/api/role-login", (req, res) => {
   const body = req.body || {};
 
   const reqRole = String(body.role || body.adminRole || "").trim().toLowerCase();
   const reqName = String(body.name || body.username || body.user || body.account || "").trim().toLowerCase();
-  const reqKey1 = String(body.key1 || body.username || body.user || "").trim();
-  const reqKey2 = String(body.key2 || body.password || body.pass || "").trim();
+
+  const reqKey1 = String(body.key1 || body.username || body.user || body.email || "").trim();
+  const reqKey2 = String(body.key2 || body.password || body.pass || body.pw || "").trim();
 
   const admins = readAdmins();
 
-  const matchByLogin = (a) => {
+  const found = admins.find((a) => {
     const role = String(a.role || "").trim().toLowerCase();
     const status = String(a.status || "active").trim().toLowerCase();
 
     const name = String(a.name || a.username || "").trim().toLowerCase();
+    const username = String(a.username || a.name || "").trim().toLowerCase();
+
     const key1 = String(a.key1 || a.username || "").trim();
     const key2 = String(a.key2 || a.password || "").trim();
+    const password = String(a.password || a.key2 || "").trim();
 
-    const roleOk = !reqRole || role === reqRole;
-    const keyOk = key1 === reqKey1 && key2 === reqKey2;
-    const nameOk = reqName && name === reqName && key2 === reqKey2;
+    const roleOk = !reqRole || role === reqRole || role === "owner";
+    const activeOk = status === "active" || status === "aktif";
 
-    return roleOk && (keyOk || nameOk);
-  };
+    const byKeys = key1 === reqKey1 && key2 === reqKey2;
+    const byNameKey2 = reqName && (name === reqName || username === reqName) && (key2 === reqKey2 || password === reqKey2);
+    const byUserPass = reqName && (name === reqName || username === reqName) && password === reqKey2;
 
-  const foundAny = admins.find(matchByLogin);
+    return roleOk && activeOk && (byKeys || byNameKey2 || byUserPass);
+  });
 
-  if (!foundAny) {
+  if (!found) {
     return res.status(401).json({
       ok: false,
-      message: "Nama akun / Key 1 / Key 2 / Role salah"
-    });
-  }
-
-  const status = String(foundAny.status || "active").trim().toLowerCase();
-
-  if (status !== "active" && status !== "aktif") {
-    return res.status(403).json({
-      ok: false,
-      message: "Akun belum aktif. Aktifkan dulu dari Owner Panel."
+      message: "Login gagal: nama/key/password salah atau akun belum ACTIVE",
+      received: {
+        role: reqRole,
+        name: reqName,
+        key1: reqKey1 ? "terisi" : "kosong",
+        key2: reqKey2 ? "terisi" : "kosong"
+      }
     });
   }
 
   res.json({
     ok: true,
-    admin: foundAny,
-    adminRole: foundAny.role,
-    adminName: foundAny.name || foundAny.username
+    admin: found,
+    adminRole: found.role,
+    adminName: found.name || found.username
   });
+});
+
+// ===== OWNER V2 API UNTUK owner.html =====
+app.get("/api/owner-v2/accounts", (req, res) => {
+  res.json(readAdmins());
+});
+
+app.post("/api/owner-v2/accounts", (req, res) => {
+  const body = req.body || {};
+  const name = body.name || body.username || body.nama;
+  const key1 = body.key1 || body.username || body.user;
+  const key2 = body.key2 || body.password || body.pass;
+  const role = body.role || "admin";
+
+  if (!name || !key1 || !key2 || !role) {
+    return res.status(400).json({ ok: false, message: "Nama akun, Key 1, Key 2, dan role wajib diisi" });
+  }
+
+  const admins = readAdmins();
+
+  const exists = admins.find((a) =>
+    String(a.name || a.username || "").toLowerCase() === String(name).toLowerCase()
+  );
+
+  if (exists) {
+    return res.status(400).json({ ok: false, message: "Nama akun sudah ada" });
+  }
+
+  const acc = {
+    id: makeId(),
+    name,
+    username: name,
+    key1,
+    key2,
+    password: key2,
+    role,
+    status: body.status || "active",
+    createdAt: new Date().toISOString()
+  };
+
+  admins.push(acc);
+  writeAdmins(admins);
+
+  res.json({ ok: true, account: acc, accounts: admins });
+});
+
+app.patch("/api/owner-v2/accounts/:name/status", (req, res) => {
+  const target = decodeURIComponent(req.params.name).toLowerCase();
+  const admins = readAdmins();
+
+  const next = admins.map((a) => {
+    const name = String(a.name || a.username || "").toLowerCase();
+    if (name !== target) return a;
+    if (a.role === "owner") return a;
+    return { ...a, status: req.body.status || a.status };
+  });
+
+  writeAdmins(next);
+  res.json({ ok: true, accounts: next });
+});
+
+app.delete("/api/owner-v2/accounts/:name", (req, res) => {
+  const target = decodeURIComponent(req.params.name).toLowerCase();
+
+  const next = readAdmins().filter((a) => {
+    if (a.role === "owner") return true;
+    const name = String(a.name || a.username || "").toLowerCase();
+    return name !== target;
+  });
+
+  writeAdmins(next);
+  res.json({ ok: true, accounts: next });
 });
 
 
