@@ -639,6 +639,38 @@ app.delete("/api/owner-v2/accounts/:name", (req, res) => {
 });
 
 
+
+
+// ===== FIX CHECK ACCOUNT STATUS UNTUK ADMIN PANEL =====
+app.get("/api/check-account-status/:name", (req, res) => {
+  const target = decodeURIComponent(req.params.name || "").trim().toLowerCase();
+  const admins = readAdmins();
+
+  const found = admins.find((a) => {
+    const n1 = String(a.name || "").trim().toLowerCase();
+    const n2 = String(a.username || "").trim().toLowerCase();
+    return n1 === target || n2 === target;
+  });
+
+  if (!found) {
+    return res.status(404).json({
+      ok: false,
+      status: "not_found",
+      message: "Akun tidak ditemukan"
+    });
+  }
+
+  const status = String(found.status || "active").trim().toLowerCase();
+
+  res.json({
+    ok: true,
+    name: found.name || found.username,
+    role: found.role,
+    status: status === "aktif" ? "active" : status
+  });
+});
+
+
 app.get(/.*/, (req, res) => {
   if (req.path.startsWith("/api")) {
     return res.status(404).json({ message: "API tidak ditemukan" });
