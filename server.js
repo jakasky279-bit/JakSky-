@@ -782,20 +782,6 @@ app.post(
 );
 
 
-app.get(/.*/, (req, res) => {
-  if (req.path.startsWith("/api")) {
-    return res.status(404).json({ message: "API tidak ditemukan" });
-  }
-
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
-
-if (!process.env.VERCEL) {
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log("Web aktif di http://localhost:" + PORT);
-  });
-}
-
 
 
 /* ===== JAKSKY_CLOUDINARY_SERVER_PATCH_START ===== */
@@ -852,11 +838,9 @@ async function jakLoadDb(){
       });
       if(r.ok){
         const data = await r.json();
-        if(data && typeof data === "object"){
-          data.videos = Array.isArray(data.videos) ? data.videos : [];
-          data.comments = Array.isArray(data.comments) ? data.comments : [];
-          return { ...def, ...data };
-        }
+        data.videos = Array.isArray(data.videos) ? data.videos : [];
+        data.comments = Array.isArray(data.comments) ? data.comments : [];
+        return { ...def, ...data };
       }
     }catch(e){}
   }
@@ -929,16 +913,14 @@ function jakMakeVideo(body){
     videoUrl: vid,
     url: vid,
     src: vid,
-    videos: vid ? [vid] : [],
-    files: vid ? [vid] : [],
+    views: 0,
+    likes: 0,
+    dislikes: 0,
+    downloads: 0,
+    comments: [],
+    rating: 0,
     thumbnailPublicId: body.thumbnailPublicId || "",
     videoPublicId: body.videoPublicId || "",
-    views: Number(body.views || 0),
-    likes: Number(body.likes || 0),
-    dislikes: Number(body.dislikes || 0),
-    downloads: Number(body.downloads || 0),
-    rating: Number(body.rating || 0),
-    comments: [],
     extra: body.extra || {},
     createdAt: now,
     updatedAt: now
@@ -955,16 +937,6 @@ app.get("/api/cloudinary-videos", async (req, res) => {
   }
 });
 
-app.get("/api/cloudinary-db", async (req, res) => {
-  try{
-    const db = await jakLoadDb();
-    res.setHeader("cache-control", "no-store");
-    res.json(db);
-  }catch(e){
-    res.status(500).json({ videos: [], comments: [] });
-  }
-});
-
 app.post("/api/admin/cloudinary-save", express.json({ limit: "5mb" }), async (req, res) => {
   try{
     const video = jakMakeVideo(req.body || {});
@@ -977,26 +949,29 @@ app.post("/api/admin/cloudinary-save", express.json({ limit: "5mb" }), async (re
     db.videos.unshift(video);
 
     await jakSaveDb(db);
-    res.json({ ok:true, success:true, video, item: video });
+    res.json({ ok:true, success:true, video, item:video });
   }catch(e){
     res.status(500).json({ ok:false, error:e.message });
   }
 });
-
-app.post(["/api/cloudinary-view/:id", "/api/videos/:id/view", "/api/items/:id/view"], express.json({ limit:"1mb" }), async (req, res) => {
-  try{
-    const db = await jakLoadDb();
-    const v = (db.videos || []).find(x => String(x.id) === String(req.params.id));
-    if(v){
-      v.views = Number(v.views || 0) + 1;
-      v.updatedAt = new Date().toISOString();
-      await jakSaveDb(db);
-    }
-    res.json({ ok:true, views: v ? v.views : 0 });
-  }catch(e){
-    res.json({ ok:false });
-  }
-});
 /* ===== JAKSKY_CLOUDINARY_SERVER_PATCH_END ===== */
+
+app.get(/.*/, (req, res) => {
+  if (req.path.startsWith("/api")) {
+    return res.status(404).json({ message: "API tidak ditemukan" });
+  }
+
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+if (!process.env.VERCEL) {
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log("Web aktif di http://localhost:" + PORT);
+  });
+}
+
+
+
+
 
 module.exports = app;
