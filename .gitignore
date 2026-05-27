@@ -10,3 +10,4 @@ server.backup-safe.js
 server.backup-crash-fix.js
 fix-vercel-safe.js
 fix-vercel-safe.cjs
+.vercel
