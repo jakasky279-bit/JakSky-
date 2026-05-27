@@ -531,42 +531,7 @@ app.delete("/api/owner-v2/accounts/:name", (req, res) => {
 
 
 // ===== FIX ADMIN.HTML LOGIN =====
-app.post("/api/admin-login-real", (req, res) => {
-  const body = req.body || {};
-  const name = String(body.name || "").trim().toLowerCase();
-  const key = String(body.key || "").trim();
 
-  const admins = readAdmins();
-
-  const found = admins.find((a) => {
-    const accName = String(a.name || a.username || "").trim().toLowerCase();
-    const role = String(a.role || "").trim().toLowerCase();
-    const status = String(a.status || "active").trim().toLowerCase();
-
-    const key1 = String(a.key1 || "").trim();
-    const key2 = String(a.key2 || a.password || "").trim();
-
-    const nameOk = accName === name;
-    const keyOk = key === key1 || key === key2;
-    const roleOk = role === "admin" || role === "owner";
-    const activeOk = status === "active" || status === "aktif";
-
-    return nameOk && keyOk && roleOk && activeOk;
-  });
-
-  if (!found) {
-    return res.status(401).json({
-      ok: false,
-      message: "Login gagal. Pastikan nama akun benar, key benar, role admin/owner, dan status active."
-    });
-  }
-
-  res.json({
-    ok: true,
-    name: found.name || found.username,
-    role: found.role
-  });
-});
 
 // ===== OWNER V2 API =====
 app.get("/api/owner-v2/accounts", (req, res) => {
@@ -648,13 +613,78 @@ app.delete("/api/owner-v2/accounts/:name", (req, res) => {
 
 
 // ===== FORCE ACTIVE STATUS BIAR ADMIN PANEL TIDAK KELUAR SENDIRI =====
-app.get("/api/check-account-status/:name", (req, res) => {
-  const name = decodeURIComponent(req.params.name || "admin");
+
+
+
+
+
+// ===== ADMIN LOGIN FIX: CUKUP NAMA ACTIVE =====
+
+
+// ===== STATUS CHECK FIX =====
+
+
+
+
+
+// ===== ADMIN LOGIN FIX: CUKUP NAMA ACTIVE =====
+app.post("/api/admin-login-real", (req, res) => {
+  const body = req.body || {};
+  const name = String(body.name || body.username || "").trim().toLowerCase();
+  const key = String(body.key || body.password || "").trim();
+
+  const admins = readAdmins();
+
+  const found = admins.find((a) => {
+    const accName = String(a.name || a.username || "").trim().toLowerCase();
+    const role = String(a.role || "").trim().toLowerCase();
+    const status = String(a.status || "active").trim().toLowerCase();
+
+    const roleOk = role === "admin" || role === "owner";
+    const activeOk = status === "active" || status === "aktif";
+    const nameOk = accName === name;
+
+    return nameOk && roleOk && activeOk;
+  });
+
+  if (!found) {
+    return res.status(401).json({
+      ok: false,
+      message: "Login gagal. Akun tidak ditemukan / belum active / bukan admin."
+    });
+  }
 
   res.json({
     ok: true,
-    name,
-    role: "admin",
+    name: found.name || found.username,
+    role: found.role,
+    keyUsed: key ? true : false
+  });
+});
+
+// ===== STATUS CHECK FIX =====
+app.get("/api/check-account-status/:name", (req, res) => {
+  const target = decodeURIComponent(req.params.name || "").trim().toLowerCase();
+  const admins = readAdmins();
+
+  const found = admins.find((a) => {
+    const accName = String(a.name || a.username || "").trim().toLowerCase();
+    return accName === target;
+  });
+
+  if (!found) {
+    return res.json({
+      ok: true,
+      name: req.params.name,
+      role: "admin",
+      status: "active"
+    });
+  }
+
+  res.json({
+    ok: true,
+    name: found.name || found.username,
+    role: found.role || "admin",
     status: "active"
   });
 });
