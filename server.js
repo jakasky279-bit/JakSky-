@@ -528,6 +528,117 @@ app.delete("/api/owner-v2/accounts/:name", (req, res) => {
 });
 
 
+
+
+// ===== FIX ADMIN.HTML LOGIN =====
+app.post("/api/admin-login-real", (req, res) => {
+  const body = req.body || {};
+  const name = String(body.name || "").trim().toLowerCase();
+  const key = String(body.key || "").trim();
+
+  const admins = readAdmins();
+
+  const found = admins.find((a) => {
+    const accName = String(a.name || a.username || "").trim().toLowerCase();
+    const role = String(a.role || "").trim().toLowerCase();
+    const status = String(a.status || "active").trim().toLowerCase();
+
+    const key1 = String(a.key1 || "").trim();
+    const key2 = String(a.key2 || a.password || "").trim();
+
+    const nameOk = accName === name;
+    const keyOk = key === key1 || key === key2;
+    const roleOk = role === "admin" || role === "owner";
+    const activeOk = status === "active" || status === "aktif";
+
+    return nameOk && keyOk && roleOk && activeOk;
+  });
+
+  if (!found) {
+    return res.status(401).json({
+      ok: false,
+      message: "Login gagal. Pastikan nama akun benar, key benar, role admin/owner, dan status active."
+    });
+  }
+
+  res.json({
+    ok: true,
+    name: found.name || found.username,
+    role: found.role
+  });
+});
+
+// ===== OWNER V2 API =====
+app.get("/api/owner-v2/accounts", (req, res) => {
+  res.json(readAdmins());
+});
+
+app.post("/api/owner-v2/accounts", (req, res) => {
+  const body = req.body || {};
+  const name = body.name || body.username || body.nama;
+  const key1 = body.key1;
+  const key2 = body.key2;
+  const role = body.role || "admin";
+
+  if (!name || !key1 || !key2) {
+    return res.status(400).json({ ok: false, message: "Isi nama, key1, key2" });
+  }
+
+  const admins = readAdmins();
+
+  const exists = admins.find((a) =>
+    String(a.name || a.username || "").toLowerCase() === String(name).toLowerCase()
+  );
+
+  if (exists) {
+    return res.status(400).json({ ok: false, message: "Nama akun sudah ada" });
+  }
+
+  const acc = {
+    id: makeId(),
+    name,
+    username: name,
+    key1,
+    key2,
+    password: key2,
+    role,
+    status: body.status || "active",
+    createdAt: new Date().toISOString()
+  };
+
+  admins.push(acc);
+  writeAdmins(admins);
+
+  res.json({ ok: true, account: acc, accounts: admins });
+});
+
+app.patch("/api/owner-v2/accounts/:name/status", (req, res) => {
+  const target = decodeURIComponent(req.params.name).toLowerCase();
+
+  const next = readAdmins().map((a) => {
+    const n = String(a.name || a.username || "").toLowerCase();
+    if (n !== target) return a;
+    if (a.role === "owner") return a;
+    return { ...a, status: req.body.status || a.status };
+  });
+
+  writeAdmins(next);
+  res.json({ ok: true, accounts: next });
+});
+
+app.delete("/api/owner-v2/accounts/:name", (req, res) => {
+  const target = decodeURIComponent(req.params.name).toLowerCase();
+
+  const next = readAdmins().filter((a) => {
+    if (a.role === "owner") return true;
+    return String(a.name || a.username || "").toLowerCase() !== target;
+  });
+
+  writeAdmins(next);
+  res.json({ ok: true, accounts: next });
+});
+
+
 app.get(/.*/, (req, res) => {
   if (req.path.startsWith("/api")) {
     return res.status(404).json({ message: "API tidak ditemukan" });
