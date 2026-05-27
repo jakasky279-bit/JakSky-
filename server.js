@@ -690,6 +690,98 @@ app.get("/api/check-account-status/:name", (req, res) => {
 });
 
 
+
+
+// ===== FIX UPLOAD FINAL UNTUK admin-panel.html =====
+app.post(
+  "/api/admin/upload-final",
+  upload.fields([
+    { name: "thumb", maxCount: 1 },
+    { name: "thumbnail", maxCount: 1 },
+    { name: "videos", maxCount: 100 },
+    { name: "video", maxCount: 100 }
+  ]),
+  (req, res) => {
+    try {
+      const posts = readPosts();
+
+      const thumbFile =
+        req.files?.thumb?.[0] ||
+        req.files?.thumbnail?.[0];
+
+      const videoFiles =
+        req.files?.videos ||
+        req.files?.video ||
+        [];
+
+      if (!thumbFile) {
+        return res.status(400).json({
+          ok: false,
+          message: "Thumbnail belum dipilih"
+        });
+      }
+
+      if (!videoFiles.length) {
+        return res.status(400).json({
+          ok: false,
+          message: "Video belum dipilih"
+        });
+      }
+
+      const expiredHours = Number(req.body.expiredHours || 0);
+      const expiredAt = expiredHours > 0
+        ? new Date(Date.now() + expiredHours * 60 * 60 * 1000).toISOString()
+        : "";
+
+      const videos = videoFiles.map((f) => "/uploads/" + f.filename);
+
+      const post = {
+        id: makeId(),
+        title: req.body.title || "Video",
+        desc: req.body.desc || "",
+        thumb: "/uploads/" + thumbFile.filename,
+        thumbnail: "/uploads/" + thumbFile.filename,
+        video: videos[0],
+        videos,
+        type: req.body.type || "public",
+        vip: req.body.type === "vip",
+        isVip: req.body.type === "vip",
+        videoKey: req.body.key || "",
+        key: req.body.key || "",
+        expiredAt,
+        expired: false,
+        views: 0,
+        viewUsers: [],
+        likes: 0,
+        unlikes: 0,
+        dislikes: 0,
+        downloads: 0,
+        comments: [],
+        ratings: {},
+        ratingAvg: "0.0",
+        ratingCount: 0,
+        createdAt: new Date().toISOString()
+      };
+
+      posts.unshift(post);
+      writePosts(posts);
+
+      res.json({
+        ok: true,
+        message: "Upload berhasil",
+        post
+      });
+    } catch (err) {
+      console.error("UPLOAD FINAL ERROR:", err);
+      res.status(500).json({
+        ok: false,
+        message: "Upload gagal di server: " + err.message
+      });
+    }
+  }
+);
+
+
 app.get(/.*/, (req, res) => {
   if (req.path.startsWith("/api")) {
     return res.status(404).json({ message: "API tidak ditemukan" });
