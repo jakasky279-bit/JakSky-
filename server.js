@@ -6,16 +6,66 @@ const path = require("path");
 const app = express();
 
 /* ===== JAKSKY_FORCE_CLOUDINARY_TOP_START ===== */
-function jakHeadersTop(extra = {}) {
-  return {
-    apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
-    authorization: "Bearer " + process.env.SUPABASE_SERVICE_ROLE_KEY,
-    ...extra
-  };
+const jakHttpsTop = require("https");
+
+function jakSupabaseBaseTop() {
+  return String(process.env.SUPABASE_URL || "")
+    .trim()
+    .replace(/\/rest\/v1\/?$/i, "")
+    .replace(/\/+$/, "");
+}
+
+function jakServiceKeyTop() {
+  return String(process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
 }
 
 function jakReadyTop() {
-  return !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+  return !!(jakSupabaseBaseTop() && jakServiceKeyTop());
+}
+
+function jakHttpTop(method, path, body) {
+  return new Promise((resolve, reject) => {
+    const base = jakSupabaseBaseTop();
+    const key = jakServiceKeyTop();
+
+    if (!base) return reject(new Error("SUPABASE_URL kosong"));
+    if (!key) return reject(new Error("SUPABASE_SERVICE_ROLE_KEY kosong"));
+    if (!base.startsWith("https://")) return reject(new Error("SUPABASE_URL harus diawali https:// => " + base));
+
+    const url = new URL(path, base);
+    const payload = body ? JSON.stringify(body) : null;
+
+    const headers = {
+      apikey: key,
+      authorization: "Bearer " + key,
+      accept: "application/json"
+    };
+
+    if (payload) {
+      headers["content-type"] = "application/json";
+      headers["content-length"] = Buffer.byteLength(payload);
+      headers["prefer"] = "return=representation";
+    }
+
+    const req = jakHttpsTop.request(url, { method, headers }, (res) => {
+      let raw = "";
+      res.on("data", (d) => raw += d);
+      res.on("end", () => {
+        resolve({
+          ok: res.statusCode >= 200 && res.statusCode < 300,
+          status: res.statusCode,
+          text: raw
+        });
+      });
+    });
+
+    req.on("error", (err) => {
+      reject(err);
+    });
+
+    if (payload) req.write(payload);
+    req.end();
+  });
 }
 
 function jakMakeVideoTop(body) {
@@ -51,8 +101,6 @@ function jakMakeVideoTop(body) {
     downloads: 0,
     comments: [],
     rating: 0,
-    thumbnailPublicId: body.thumbnailPublicId || "",
-    videoPublicId: body.videoPublicId || "",
     createdAt: now,
     updatedAt: now
   };
@@ -60,59 +108,73 @@ function jakMakeVideoTop(body) {
 
 app.get(["/api/cloudinary-videos","/api/videos","/api/items","/api/all-videos","/api/admin/videos"], async (req, res) => {
   try {
-    if (!jakReadyTop()) return res.json([]);
+    const r = await jakHttpTop("GET", "/rest/v1/jaksky_videos?select=data&order=created_at.desc");
 
-    const r = await fetch(process.env.SUPABASE_URL + "/rest/v1/jaksky_videos?select=data&order=created_at.desc", {
-      headers: jakHeadersTop()
-    });
+    if (!r.ok) {
+      return res.status(500).json({
+        ok:false,
+        error:"Supabase GET gagal",
+        status:r.status,
+        detail:r.text,
+        base:jakSupabaseBaseTop()
+      });
+    }
 
-    if (!r.ok) return res.json([]);
-
-    const rows = await r.json();
-    const videos = rows.map(x => x.data).filter(Boolean);
-
+    const rows = JSON.parse(r.text || "[]");
     res.setHeader("cache-control", "no-store");
-    res.json(videos);
+    res.json(rows.map(x => x.data).filter(Boolean));
   } catch (e) {
-    res.status(500).json([]);
+    res.status(500).json({
+      ok:false,
+      error:e.message,
+      code:e.code || "",
+      base:jakSupabaseBaseTop(),
+      hasKey:!!jakServiceKeyTop()
+    });
   }
 });
 
 app.post("/api/admin/cloudinary-save", express.json({ limit: "10mb" }), async (req, res) => {
   try {
-    if (!jakReadyTop()) {
-      return res.status(500).json({ ok:false, error:"SUPABASE env belum ada" });
-    }
-
     const v = jakMakeVideoTop(req.body || {});
+
     if (!v.videoUrl && !v.thumbnailUrl) {
       return res.status(400).json({ ok:false, error:"URL video/thumbnail kosong" });
     }
 
-    const r = await fetch(process.env.SUPABASE_URL + "/rest/v1/jaksky_videos", {
-      method: "POST",
-      headers: jakHeadersTop({
-        "content-type": "application/json",
-        "prefer": "return=representation"
-      }),
-      body: JSON.stringify({
-        id: v.id,
-        data: v
-      })
+    const r = await jakHttpTop("POST", "/rest/v1/jaksky_videos", {
+      id: v.id,
+      data: v
     });
 
-    const text = await r.text();
-
     if (!r.ok) {
-      return res.status(500).json({ ok:false, saved:false, error:text });
+      return res.status(500).json({
+        ok:false,
+        saved:false,
+        error:"Supabase POST gagal",
+        status:r.status,
+        detail:r.text,
+        base:jakSupabaseBaseTop()
+      });
     }
 
     res.json({ ok:true, success:true, saved:true, video:v, item:v });
   } catch (e) {
-    res.status(500).json({ ok:false, saved:false, error:e.message });
+    res.status(500).json({
+      ok:false,
+      saved:false,
+      error:e.message,
+      code:e.code || "",
+      base:jakSupabaseBaseTop(),
+      hasKey:!!jakServiceKeyTop()
+    });
   }
 });
 /* ===== JAKSKY_FORCE_CLOUDINARY_TOP_END ===== */
+
+
+
+
 
 
 
