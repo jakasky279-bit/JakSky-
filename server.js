@@ -47,7 +47,14 @@ function jakHttpTop(method, path, body) {
       headers["prefer"] = "return=representation";
     }
 
-    const req = jakHttpsTop.request(url, { method, headers }, (res) => {
+    const req = jakHttpsTop.request({
+      protocol: url.protocol,
+      hostname: url.hostname,
+      port: url.port || 443,
+      path: url.pathname + url.search,
+      method,
+      headers
+    }, (res) => {
       let raw = "";
       res.on("data", (d) => raw += d);
       res.on("end", () => {
