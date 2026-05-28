@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>JakSky Upload Fix</title>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(180deg,#ff8ed1,#ffd5eb);min-height:100vh;color:#222}
+    header{background:#fff;padding:18px 22px;display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #ff5bb6}
+    h1{font-size:22px;margin:0}
+    .wrap{max-width:720px;margin:auto;padding:20px}
+    .card{background:#fff;border-radius:24px;padding:22px;margin:18px 0;box-shadow:0 10px 35px #0001}
+    input,select,textarea{width:100%;padding:15px;margin:10px 0;border:1px solid #f4b8d7;border-radius:14px;font-size:16px}
+    button{border:0;border-radius:999px;padding:15px 22px;background:linear-gradient(90deg,#ff2f99,#ff6cc4);color:#fff;font-weight:800;font-size:16px}
+    button:disabled{opacity:.55}
+    .status{margin-top:14px;padding:14px;border-radius:14px;background:#fff0f8;color:#e91e82;font-weight:800;white-space:pre-wrap}
+    .item{border:1px solid #ffd0e8;border-radius:16px;padding:12px;margin:12px 0;background:#fff7fb}
+    .item img{width:100%;max-height:220px;object-fit:cover;border-radius:14px}
+    video{width:100%;border-radius:14px;margin-top:8px}
+    small{color:#777}
+  </style>
+</head>
+<body>
+<header>
+  <h1>🔥 JakSky Upload Fix</h1>
+  <button onclick="location.href='admin-panel.html'">Panel</button>
+</header>
+
+<div class="wrap">
+  <div class="card">
+    <h2>Upload Video</h2>
+
+    <input id="title" placeholder="Judul video" />
+    <textarea id="desc" placeholder="Deskripsi"></textarea>
+
+    <select id="access">
+      <option value="public">Public / Gratis</option>
+      <option value="vip">VIP</option>
+      <option value="favorite">Favorit</option>
+      <option value="trending">Trending</option>
+    </select>
+
+    <label><b>Thumbnail</b></label>
+    <input id="thumbFile" type="file" accept="image/*" />
+
+    <label><b>Video</b></label>
+    <input id="videoFile" type="file" accept="video/*" />
+
+    <button id="btn" onclick="uploadNow()">Upload Sekarang</button>
+    <div id="status" class="status">Siap upload.</div>
+  </div>
+
+  <div class="card">
+    <h2>Kelola Video</h2>
+    <div id="list">Memuat...</div>
+  </div>
+</div>
+
+<script>
+const CLOUD_NAME = "dwj9xnhqt";
+const UPLOAD_PRESET = "Jaksky";
+
+const $ = id => document.getElementById(id);
+
+function setStatus(t){ $("status").textContent = t; }
+
+function uploadCloudinary(file, label){
+  return new Promise((resolve, reject) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("upload_preset", UPLOAD_PRESET);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`);
+
+    xhr.upload.onprogress = e => {
+      if(e.lengthComputable){
+        const p = Math.round((e.loaded / e.total) * 100);
+        setStatus(`${label} mengupload ${p}%\n${(e.loaded/1024/1024).toFixed(2)} MB / ${(e.total/1024/1024).toFixed(2)} MB`);
+      }
+    };
+
+    xhr.onload = () => {
+      try{
+        const json = JSON.parse(xhr.responseText || "{}");
+        if(xhr.status >= 200 && xhr.status < 300 && json.secure_url){
+          resolve(json);
+        }else{
+          reject(new Error(json.error?.message || xhr.responseText || "Cloudinary gagal"));
+        }
+      }catch(e){
+        reject(e);
+      }
+    };
+
+    xhr.onerror = () => reject(new Error("Koneksi Cloudinary gagal"));
+    xhr.send(fd);
+  });
+}
+
+async function uploadNow(){
+  const btn = $("btn");
+  const title = $("title").value.trim();
+  const desc = $("desc").value.trim();
+  const access = $("access").value;
+  const thumbFile = $("thumbFile").files[0];
+  const videoFile = $("videoFile").files[0];
+
+  if(!title) return setStatus("Judul wajib diisi.");
+  if(!thumbFile) return setStatus("Thumbnail belum dipilih.");
+  if(!videoFile) return setStatus("Video belum dipilih.");
+
+  btn.disabled = true;
+
+  try{
+    setStatus("Mulai upload thumbnail...");
+    const thumb = await uploadCloudinary(thumbFile, "Thumbnail");
+
+    setStatus("Mulai upload video...");
+    const vid = await uploadCloudinary(videoFile, "Video");
+
+    setStatus("Menyimpan ke database Supabase...");
+
+    const r = await fetch("/api/admin/cloudinary-save", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({
+        title,
+        description: desc,
+        access,
+        thumbnailUrl: thumb.secure_url,
+        videoUrl: vid.secure_url,
+        thumbnailPublicId: thumb.public_id,
+        videoPublicId: vid.public_id
+      })
+    });
+
+    const json = await r.json().catch(()=>({}));
+    if(!r.ok || !json.saved){
+      throw new Error(json.error || JSON.stringify(json));
+    }
+
+    setStatus("✅ Upload berhasil dan tersimpan permanen.");
+    $("title").value = "";
+    $("desc").value = "";
+    $("thumbFile").value = "";
+    $("videoFile").value = "";
+    await loadVideos();
+  }catch(e){
+    setStatus("❌ Upload gagal:\n" + e.message);
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+async function loadVideos(){
+  const box = $("list");
+  try{
+    const r = await fetch("/api/cloudinary-videos?v=" + Date.now(), { cache:"no-store" });
+    const data = await r.json();
+
+    if(!Array.isArray(data) || data.length === 0){
+      box.textContent = "Kosong";
+      return;
+    }
+
+    box.innerHTML = data.map(v => `
+      <div class="item">
+        <b>${v.title || v.judul || "Tanpa Judul"}</b>
+        <br><small>${v.access || v.type || "public"}</small>
+        ${v.thumbnailUrl || v.thumbnail ? `<img src="${v.thumbnailUrl || v.thumbnail}">` : ""}
+        ${v.videoUrl || v.video ? `<video controls src="${v.videoUrl || v.video}"></video>` : ""}
+      </div>
+    `).join("");
+  }catch(e){
+    box.textContent = "Gagal memuat: " + e.message;
+  }
+}
+
+loadVideos();
+</script>
+</body>
+</html>
